@@ -1,0 +1,5 @@
+html {
+    display: flex;
+    flex: auto;
+    flex-wrap: wrap;
+}
