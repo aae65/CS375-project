@@ -1,4 +1,3 @@
-\c restaurant-voting
 
 -- use this to clear any existing tables to reinsert fresh data
 -- you'll need to add a DROP TABLE for every table you add
@@ -12,8 +11,6 @@ CREATE TABLE session (
 );
 
 -- dummy data
-INSERT INTO foo (datum) VALUES ('Hello this is some text');
-INSERT INTO foo (datum) VALUES ('Another sentence');
-INSERT INTO foo (datum) VALUES ('How are you?');
-
-\q
+INSERT INTO session (datum) VALUES ('Hello this is some text');
+INSERT INTO session (datum) VALUES ('Another sentence');
+INSERT INTO session (datum) VALUES ('How are you?');
