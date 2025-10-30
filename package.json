@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "express": "^5.1.0",
+    "fomantic-ui": "^2.9.4"
+  }
+}

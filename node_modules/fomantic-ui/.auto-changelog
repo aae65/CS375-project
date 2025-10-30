@@ -1,0 +1,8 @@
+{
+  "output": "CHANGELOG.md",
+  "unreleased": true,
+  "commitLimit": false,
+  "backfillLimit": false,
+  "template": "changelog-template.hbs",
+  "handlebarsSetup": "changelog-setup.js"
+}
