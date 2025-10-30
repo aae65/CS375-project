@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+        <link rel="stylesheet" href="/semantic/dist/semantic.min.css">
+        <script src="/semantic/dist/semantic.min.js"></script>
+        <title>Session</title>
+    </head>
+    <body>
+        <div class="ui secondary pointing menu" style="padding: 1px">
+            <a class="item" data-tab="group">Your Group</a>
+            <a class="item" data-tab="vote">Voting</a>
+        </div>
+        <div class="ui bottom attached tab segment" data-tab="group">
+            <div class="ui three column stackable grid">
+                <div class="column">
+                    <div class="ui raised segment">
+                        <div class="ui placeholder">
+                            <div class="image header">
+                                <div class="line"></div>
+                                <div class="line"></div>
+                            </div>
+                            <div class="paragraph">
+                                <div class="medium line"></div>
+                                <div class="short line"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="column">
+                    <div class="ui raised segment">
+                        <div class="ui placeholder">
+                            <div class="image header">
+                                <div class="line"></div>
+                                <div class="line"></div>
+                            </div>
+                            <div class="paragraph">
+                                <div class="medium line"></div>
+                                <div class="short line"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="column">
+                    <div class="ui raised segment">
+                        <div class="ui placeholder">
+                            <div class="image header">
+                                <div class="line"></div>
+                                <div class="line"></div>
+                            </div>
+                            <div class="paragraph">
+                                <div class="medium line"></div>
+                                <div class="short line"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="ui bottom attached tab segment" data-tab="vote">
+            <div class="ui fluid placeholder">
+                <div class="column">
+                    <div class="ui placeholder">
+                        <div class="image"></div>
+                        Map will go here
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+    <script>
+        $('.menu .item').tab();
+    </script>
+</html>
