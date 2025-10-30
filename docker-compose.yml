@@ -5,10 +5,5 @@ services:
       - "3000:3000"
     environment:
       - DATABASE_URL=${DATABASE_URL}
-      - PGUSER=${PGUSER}
-      - PGHOST=${PGHOST}
-      - PGPORT=${PGPORT}
-      - PGPASSWORD=${PGPASSWORD}
-      - PGDATABASE=${PGDATABASE}
     env_file:
     - .env
