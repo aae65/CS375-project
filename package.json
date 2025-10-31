@@ -1,9 +1,7 @@
 {
   "scripts": {
     "start": "node app/server.js",
-    "setup": "fly postgres connect -a YOURFLYPOSTGRESAPPNAME < setup.sql",
-    "start:local": "env-cmd node app/server.js",
-    "setup:local": "env-cmd psql -d postgres -c \"create database YOURFLYWEBAPPNAME\" -f setup.sql"
+    "start:local": "env-cmd node app/server.js"
   },
   "dependencies": {
     "env-cmd": "^10.1.0",
