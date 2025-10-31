@@ -10,9 +10,9 @@ CREATE TABLE session_users (
 );
 
 CREATE TABLE restaurants (
-    session_id UUID REFERENCES session(session_id)
+    session_id UUID REFERENCES session(session_id),
     restaurant_id SERIAL PRIMARY KEY,
-    name VARCHAR(100),
+    name VARCHAR(100)
 );
 
 CREATE TABLE votes (
