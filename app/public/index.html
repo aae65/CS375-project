@@ -109,13 +109,33 @@
     let modal = document.getElementById("modal");
     let copyLink = document.getElementById("copyLink");
     let linkCopied = document.getElementById('link-copied');
+    let linkInput = document.querySelector('#modal input[type="text"]');
 
-    $(modal).modal('attach events', generateLink, 'show');
+    generateLink.addEventListener('click', () => {
+        fetch('/generate-session')
+        .then(response => response.json())
+        .then(data => {
+            linkInput.value = data.link;
+            $(modal).modal('show');
+        })
+        .catch(error => {
+            console.error('Error generating link:', error);
+        });
+    });
+
+    copyLink.addEventListener('click', () => {
+        linkInput.select();
+        linkInput.setSelectionRange(0, 99999);
+        document.execCommand('copy');
+        $(copyLink).popup('show');
+    });
+
     $(copyLink).popup({
         popup : linkCopied,
         position : 'top center',
-        on : 'click'
+        on : 'manual'
     });
+
     $('.menu .item').tab();
 </script>
 </html>
