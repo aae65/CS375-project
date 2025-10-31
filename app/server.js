@@ -3,10 +3,11 @@ const express = require("express");
 const app = express();
 const { Pool } = require('pg');
 
+// connect to Neon db
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: {
-        rejectUnauthorized: false // Required for Neon
+        rejectUnauthorized: false
     }
 });
 
@@ -18,7 +19,7 @@ app.get("/", (req, res) => {
 
 app.get("/api/test", async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM session');
+        let result = await pool.query('SELECT * FROM session;');
         res.json({ 
             success: true, 
             data: result.rows, 
