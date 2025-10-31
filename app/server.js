@@ -31,12 +31,11 @@ app.get("/api/test", async (req, res) => {
     }
 });
 
-app.get("/generate-session", async (req, res) => {
-    let session_id = null;
+app.get("/generate-session", (req, res) => {
     pool.query(`INSERT INTO session 
         DEFAULT VALUES RETURNING session_id;`)
     .then((result) => {
-        let data = result.rows[result.rows.length - 1].session_id;
+        let data = result.rows[0].session_id;
         return res.json({
             session_id: data,
             link: `${req.protocol}://${req.get('host')}/session/${data}`
