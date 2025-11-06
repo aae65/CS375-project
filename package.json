@@ -1,6 +1,15 @@
 {
+  "scripts": {
+    "start": "node app/server.js",
+    "start:local": "env-cmd node app/server.js"
+  },
   "dependencies": {
+    "env-cmd": "^10.1.0",
     "express": "^5.1.0",
-    "fomantic-ui": "^2.9.4"
+    "fomantic-ui": "^2.9.4",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "@flydotio/dockerfile": "^0.4.11"
   }
 }
