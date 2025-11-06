@@ -17,6 +17,39 @@
     <title>WIP</title>
 </head>
 <body>
+    <div class="ui secondary pointing menu" style="padding: 1px">
+        <a class="item active" data-tab="About Us">About Us</a>
+        <a class="item" data-tab="create">Create a Session</a>
+    </div>
+    <div class="ui fluid bottom attached tab segment active" data-tab="About Us">
+        hi
+    </div>
+    <div class="ui fluid bottom attached tab segment" data-tab="create">
+        <div class="ui two column stackable grid">
+            <div class="column">
+                <form class="ui form" id="form" action="/session">
+                    <div class="field">
+                        <label>Name</label>
+                        <input placeholder="First Name" name="name" type="text">
+                    </div>
+                    <div class="field">
+                        <label>Email</label>
+                        <input placeholder="Email" name="email" type="text">
+                    </div>
+                    <div class="field">
+                        <label>Phone Number</label>
+                        <input placeholder="Phone Number" name="phone" type="text">
+                    </div>
+                    <div class="field">
+                        <label>Zip Code</label>
+                        <input placeholder="Zip Code" name="zip" type="text">
+                    </div>
+                    <button class="ui primary button" id="submit">Submit</button>
+                    <div class="ui error message" id="errorBox"></div>
+                </form>
+            </div>
+        </div>
+    </div>
 <div class="ui secondary pointing menu" style="padding: 1px">
     <a class="item active" data-tab="home">Home</a>
     <a class="item" data-tab="group">Your Group</a>
@@ -116,12 +149,31 @@
     let modal = document.getElementById("modal");
     let copyLink = document.getElementById("copyLink");
     let linkCopied = document.getElementById('link-copied');
+    let linkInput = document.querySelector('#modal input[type="text"]');
 
-    $(modal).modal('attach events', generateLink, 'show');
+    generateLink.addEventListener('click', () => {
+        fetch('/generate-session')
+        .then(response => response.json())
+        .then(data => {
+            linkInput.value = data.link;
+            $(modal).modal('show');
+        })
+        .catch(error => {
+            console.error('Error generating link:', error);
+        });
+    });
+
+    copyLink.addEventListener('click', () => {
+        linkInput.select();
+        linkInput.setSelectionRange(0, 99999);
+        document.execCommand('copy');
+        $(copyLink).popup('show');
+    });
+
     $(copyLink).popup({
         popup: linkCopied,
         position: 'top center',
-        on: 'click'
+        on: 'manual'
     });
 
     // Leaflet & OpenStreetMap
@@ -180,4 +232,5 @@
         }
     })
 </script>
+<script src="form.js"></script>
 </html>
