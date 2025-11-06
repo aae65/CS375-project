@@ -49,19 +49,30 @@ function submitForm(event) {
             phone: form.phone.value,
             zip: form.zip.value
         })
-    }).then(response => response.json()
-    ).then(body => {
-        if (body.success) {
-            window.location.href = body.data;
-        } else {
-            errorBox.textContent = "";
-            body.errors.forEach(msg => {
-                let p = document.createElement("p");
-                p.textContent = msg;
-                errorBox.appendChild(p);
+    }).then(response => {
+        if (response.status === 200) {
+            return response.json().then(body => {
+                window.location.href = body.data;
             });
-            errorBox.classList.add("visible");
-            errorBox.style.display = "block";
+        } else {
+            return response.json().then(body => {
+                errorBox.textContent = "";
+                if (body.errors && Array.isArray(body.errors)) {
+                    body.errors.forEach(msg => {
+                        let p = document.createElement("p");
+                        p.textContent = msg;
+                        errorBox.appendChild(p);
+                    });
+                }
+                errorBox.classList.add("visible");
+                errorBox.style.display = "block";
+            });
         }
+    }).catch(error => {
+        // Added error handling for network issues
+        console.error('Error:', error);
+        errorBox.textContent = "Network error. Please try again.";
+        errorBox.classList.add("visible");
+        errorBox.style.display = "block";
     });
 }

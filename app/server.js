@@ -73,7 +73,7 @@ app.post("/generate-session", (req, res) => {
         let data = result.rows[0].session_id;
         let link= `${req.protocol}://${req.get('host')}/session/${data}`;
         //TODO: for new branch ignore if not Vivian or Ashleigh
-        res.json({data: link});
+        res.status(200).json({data: link});
     })
     .catch((error) => {
         console.error("Error generating a session:", error);
