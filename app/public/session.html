@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+        <link rel="stylesheet" href="/semantic/dist/semantic.min.css">
+        <script src="/semantic/dist/semantic.min.js"></script>
+        <title>Session</title>
+    </head>
+    <body>
+        <div class="ui secondary pointing menu" style="padding: 1px">
+            <a class="item" data-tab="group">Your Group</a>
+            <a class="item" data-tab="vote">Voting</a>
+        </div>
+        <h1>Hello <span id="name"></span></h1>
+        <div class="ui bottom attached tab segment" data-tab="group">
+            <div class="ui stackable one column grid">
+                <div class="column">
+                    <div class="ui raised segment">
+                        <div class="ui placeholder">
+                            <div class="image header">
+                                <div class="line"></div>
+                                <div class="line"></div>
+                            </div>
+                            <div class="paragraph">
+                                <div class="medium line"></div>
+                                <div class="short line"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="column">
+                    <div class="ui raised segment">
+                        <div class="ui placeholder">
+                            <div class="image header">
+                                <div class="line"></div>
+                                <div class="line"></div>
+                            </div>
+                            <div class="paragraph">
+                                <div class="medium line"></div>
+                                <div class="short line"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="column">
+                    <div class="ui raised segment">
+                        <div class="ui placeholder">
+                            <div class="image header">
+                                <div class="line"></div>
+                                <div class="line"></div>
+                            </div>
+                            <div class="paragraph">
+                                <div class="medium line"></div>
+                                <div class="short line"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <br>
+            <button class="ui labeled icon button" id="generate">
+                <i class="linkify icon"></i>
+                Want to add more people? Share this link with them!
+            </button>
+            <div class="ui modal" id="modal">
+                <div class="center aligned header">Note: anyone with this link can join the session</div>
+                <div class="center aligned content">
+                    <div class="ui fluid action input">
+                        <input type="text" value="placeholder" readonly>
+                        <button class="ui teal right labeled icon button" id="copyLink">
+                            <i class="copy icon"></i>
+                            Copy
+                        </button>
+                        <div class="ui custom popup transition hidden" id="link-copied">
+                            Link copied!
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="ui bottom attached tab segment" data-tab="vote">
+            <div class="ui fluid placeholder">
+                <div class="column">
+                    <div class="ui placeholder">
+                        <div class="image"></div>
+                        Map will go here
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+    <script>
+        let generateLink = document.getElementById("generate");
+        let modal = document.getElementById("modal");
+        let copyLink = document.getElementById("copyLink");
+        let linkCopied = document.getElementById('link-copied');
+        let name = sessionStorage.getItem('name');
+
+        $(modal).modal('attach events', generateLink, 'show');
+        $(copyLink).popup({
+            popup : linkCopied,
+            position : 'top center',
+            on : 'click'
+        });
+        $('.menu .item').tab();
+        document.getElementById("name").textContent = name;
+    </script>
+</html>
