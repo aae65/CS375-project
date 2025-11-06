@@ -696,7 +696,7 @@
                                             module.selectDate(date);
                                         }
                                     }
-                                    // disable form submission:
+                                    // disable index submission:
                                     event.preventDefault();
                                     event.stopPropagation();
 

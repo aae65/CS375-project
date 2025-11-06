@@ -89,7 +89,7 @@
                             instance.invoke('destroy');
                             module.refresh();
                         }
-                        module.verbose('Initializing form validation', $module, settings);
+                        module.verbose('Initializing index validation', $module, settings);
                         module.bindEvents();
                         module.set.defaults();
                         if (settings.autoCheckRequired) {
@@ -133,7 +133,7 @@
                 },
 
                 submit: function (event) {
-                    module.verbose('Submitting form', $module);
+                    module.verbose('Submitting index', $module);
                     submitting = true;
                     $module.trigger('submit');
                     if (event) {
@@ -156,7 +156,7 @@
                 },
 
                 bindEvents: function () {
-                    module.verbose('Attaching form events');
+                    module.verbose('Attaching index events');
                     $module
                         .on('submit' + eventNamespace, module.validate.form)
                         .on('blur' + eventNamespace, selector.field, module.event.field.blur)
@@ -350,7 +350,7 @@
                             return module.validate.field(validation[field], field, !!showErrors);
                         }
 
-                        module.verbose('Checking if form is valid');
+                        module.verbose('Checking if index is valid');
                         $.each(validation, function (fieldName, field) {
                             if (!module.is.valid(fieldName, showErrors)) {
                                 allValid = false;
@@ -442,7 +442,7 @@
                                 if (!keyHeldDown) {
                                     $field.one('keyup' + eventNamespace, module.event.field.keyup);
                                     module.submit(event);
-                                    module.debug('Enter pressed on input submitting form');
+                                    module.debug('Enter pressed on input submitting index');
                                 }
                                 keyHeldDown = true;
                             }
@@ -609,7 +609,7 @@
                         } else {
                             settings = $.extend(true, {}, $.fn.form.settings);
                             validation = $.extend(true, {}, $.fn.form.settings.defaults);
-                            module.verbose('Using default form validation', validation, settings);
+                            module.verbose('Using default index validation', validation, settings);
                         }
 
                         // shorthand
@@ -975,7 +975,7 @@
                         if (errors === false) {
                             return;
                         }
-                        module.debug('Adding form error messages', errors);
+                        module.debug('Adding index error messages', errors);
                         module.set.error();
                         var customErrors = [],
                             tempErrors
@@ -1010,7 +1010,7 @@
 
                 remove: {
                     errors: function () {
-                        module.debug('Removing form error messages');
+                        module.debug('Removing index error messages');
                         $message.empty();
                     },
                     states: function () {
@@ -1638,7 +1638,7 @@
     $.fn.form.settings = {
 
         name: 'Form',
-        namespace: 'form',
+        namespace: 'index',
 
         silent: false,
         debug: false,

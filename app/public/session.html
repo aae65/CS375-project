@@ -16,6 +16,16 @@
         <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
         <link rel="stylesheet" href="/semantic/dist/semantic.min.css">
         <script src="/semantic/dist/semantic.min.js"></script>
+        <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <style>
+            #map {
+                height: 420px;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                margin-top: 8px;
+            }
+        </style>
         <title>Session</title>
     </head>
     <body>
@@ -91,30 +101,13 @@
             </div>
         </div>
         <div class="ui bottom attached tab segment" data-tab="vote">
-            <div class="ui fluid placeholder">
-                <div class="column">
-                    <div class="ui placeholder">
-                        <div class="image"></div>
-                        Map will go here
-                    </div>
-                </div>
+            <button class="ui teal button" id="locBtn">Use My Location</button>
+            <div id="map"></div>
+            <div class="paragraph">
+                <div class="medium line"></div>
+                <div class="short line"></div>
             </div>
         </div>
     </body>
-    <script>
-        let generateLink = document.getElementById("generate");
-        let modal = document.getElementById("modal");
-        let copyLink = document.getElementById("copyLink");
-        let linkCopied = document.getElementById('link-copied');
-        let name = sessionStorage.getItem('name');
-
-        $(modal).modal('attach events', generateLink, 'show');
-        $(copyLink).popup({
-            popup : linkCopied,
-            position : 'top center',
-            on : 'click'
-        });
-        $('.menu .item').tab();
-        document.getElementById("name").textContent = name;
-    </script>
+    <script src="session.js"></script>
 </html>

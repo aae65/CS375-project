@@ -415,7 +415,7 @@
             'dropdown',
             'embed',
             'flyout',
-            'form',
+            'index',
             'modal',
             'nag',
             'popup',

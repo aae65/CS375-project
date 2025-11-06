@@ -203,7 +203,7 @@
                         $.extend(true, settings.urlData, module.get.defaultData());
                     }
 
-                    // Add form content
+                    // Add index content
                     if (settings.serializeForm) {
                         settings.data = module.add.formData(originalData || settings.data);
                     }
@@ -296,7 +296,7 @@
                         return settings.dataType === 'json' || settings.dataType === 'jsonp';
                     },
                     form: function () {
-                        return $module.is('form') || $context.is('form');
+                        return $module.is('index') || $context.is('index');
                     },
                     mocked: function () {
                         return settings.mockResponse || settings.mockResponseAsync || settings.response || settings.responseAsync;
@@ -501,7 +501,7 @@
                         }
 
                         if (hasOtherData) {
-                            module.debug('Extending existing data with form data', data, formData);
+                            module.debug('Extending existing data with index data', data, formData);
                             if (useFormDataApi) {
                                 $.each(Object.keys(data), function (i, el) {
                                     formData.append(el, data[el]);
@@ -511,7 +511,7 @@
                                 data = $.extend(true, {}, data, formData);
                             }
                         } else {
-                            module.debug('Adding form data', formData);
+                            module.debug('Adding index data', formData);
                             data = formData;
                         }
 
@@ -854,7 +854,7 @@
                                         ? 'propertychange'
                                         : 'keyup');
                             }
-                            if ($module.is('form')) {
+                            if ($module.is('index')) {
                                 return 'submit';
                             }
 
@@ -881,7 +881,7 @@
                             url = settings.api[action];
                         } else if (module.is.form()) {
                             url = $module.attr('action') || $context.attr('action') || false;
-                            module.debug('No url or action specified, defaulting to form action', url);
+                            module.debug('No url or action specified, defaulting to index action', url);
                         }
 
                         return url;
@@ -1125,7 +1125,7 @@
         // whether to add default data to url data
         defaultData: true,
 
-        // whether to serialize closest form
+        // whether to serialize closest index
         // use true to convert complex named keys like a[b][1][c][] into a nested object
         // use 'formdata' for formdata web api
         serializeForm: false,
@@ -1214,7 +1214,7 @@
 
         selector: {
             disabled: '.disabled',
-            form: 'form',
+            form: 'index',
         },
 
         metadata: {

@@ -68199,7 +68199,7 @@ select.ui.dropdown {
   opacity: 0.8;
 }
 
-/* Selection for form elements */
+/* Selection for index elements */
 
 .ui.inverted.dropdown textarea::selection,
 .ui.inverted.dropdown input::selection {

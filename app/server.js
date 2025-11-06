@@ -32,15 +32,48 @@ app.get("/api/test", async (req, res) => {
     }
 });
 
-app.get("/generate-session", (req, res) => {
+app.post("/generate-session", (req, res) => {
+
+    let errors = [];
+
+    let name = typeof req.body.name === "string" &&
+        req.body.name.trim().length > 0 &&
+        !req.body.name.includes(" ");
+
+    let email = typeof req.body.email === "string" &&
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(req.body.email.trim());
+
+    let phone = typeof req.body.phone === "string" &&
+        /^\d{10}$/.test(req.body.phone.trim());
+
+    let zip = typeof req.body.zip === "string" &&
+        /^\d{5}$/.test(req.body.zip.trim());
+
+    if (!name || !email || !phone || !zip)  {
+        if (!name) {
+            errors.push("Name must not have spaces or be empty");
+        }
+        if (!email) {
+            errors.push("Email address must not be empty, have spaces, or omit email characters");
+        }
+        if (!phone) {
+            errors.push("Phone number must not be empty, be less than 10 digits, or be a string");
+        }
+        if (!zip) {
+            errors.push("Zip must not be empty, be a string, or have spaces");
+        }
+        if (errors.length > 0) {
+            return res.status(400).json({errors});
+        }
+    }
+
     pool.query(`INSERT INTO session 
         DEFAULT VALUES RETURNING session_id;`)
     .then((result) => {
         let data = result.rows[0].session_id;
-        return res.json({
-            session_id: data,
-            link: `${req.protocol}://${req.get('host')}/session/${data}`
-        });
+        let link= `${req.protocol}://${req.get('host')}/session/${data}`;
+        //TODO: for new branch ignore if not Vivian or Ashleigh
+        res.json({data: link});
     })
     .catch((error) => {
         console.error("Error generating a session:", error);
@@ -64,49 +97,6 @@ app.get("/session/:session_id", (req, res) => {
         return res.status(500).send("Error fetching session.");
     });
 });
-
-
-app.get("/session", (req, res) => {
-    res.sendFile(__dirname + "/public/session.html");
-})
-
-app.post("/session", (req, res) => {
-    console.log("Received body: ", req.body);
-    let errors = [];
-
-    let name = typeof req.body.name === "string" &&
-        req.body.name.trim().length > 0 &&
-        !req.body.name.includes(" ");
-
-    let email = typeof req.body.email === "string" &&
-        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(req.body.email.trim());
-
-    let phone = typeof req.body.phone === "string" &&
-        /^\d{10}$/.test(req.body.phone.trim());
-
-    let zip = typeof req.body.zip === "string" &&
-        /^\d{5}$/.test(req.body.zip.trim());
-
-    if (name && email && phone && zip) {
-        return res.status(200).json({success: true});
-    } else {
-        if (!name) {
-            errors.push("Name must not have spaces or be empty");
-        }
-        if (!email) {
-            errors.push("Email address must not be empty, have spaces, or omit email characters");
-        }
-        if (!phone) {
-            errors.push("Phone number must not be empty, be less than 10 digits, or be a string");
-        }
-        if (!zip) {
-            errors.push("Zip must not be empty, be a string, or have spaces");
-        }
-        if (errors.length > 0) {
-            res.status(400).json({errors});
-        }
-    }
-})
 
 app.listen(3000, "0.0.0.0", () => {
     console.log("Server running at http://localhost:3000");

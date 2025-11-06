@@ -69,7 +69,7 @@ module.exports = {
 
         // collections
         'breadcrumb',
-        'form',
+        'index',
         'grid',
         'menu',
         'message',
@@ -107,7 +107,7 @@ module.exports = {
 
         // behaviors
         'api',
-        'form',
+        'index',
         'state',
         'visibility',
     ],

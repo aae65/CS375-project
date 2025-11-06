@@ -1,5 +1,5 @@
 $('.menu .item').tab();
-$('.ui.form').form({
+$('.ui.index').form({
     fields: {
         name: {
             identifier: 'name',
@@ -40,7 +40,7 @@ submit.addEventListener("click", submitForm);
 
 function submitForm(event) {
     event.preventDefault();
-    fetch(`/session`, {
+    fetch(`/generate-session`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
@@ -52,7 +52,7 @@ function submitForm(event) {
     }).then(response => response.json()
     ).then(body => {
         if (body.success) {
-            window.location.href = "/session";
+            window.location.href = body.data;
         } else {
             errorBox.textContent = "";
             body.errors.forEach(msg => {

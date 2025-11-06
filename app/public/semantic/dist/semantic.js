@@ -425,7 +425,7 @@
             'dropdown',
             'embed',
             'flyout',
-            'form',
+            'index',
             'modal',
             'nag',
             'popup',
@@ -555,7 +555,7 @@
                             instance.invoke('destroy');
                             module.refresh();
                         }
-                        module.verbose('Initializing form validation', $module, settings);
+                        module.verbose('Initializing index validation', $module, settings);
                         module.bindEvents();
                         module.set.defaults();
                         if (settings.autoCheckRequired) {
@@ -599,7 +599,7 @@
                 },
 
                 submit: function (event) {
-                    module.verbose('Submitting form', $module);
+                    module.verbose('Submitting index', $module);
                     submitting = true;
                     $module.trigger('submit');
                     if (event) {
@@ -622,7 +622,7 @@
                 },
 
                 bindEvents: function () {
-                    module.verbose('Attaching form events');
+                    module.verbose('Attaching index events');
                     $module
                         .on('submit' + eventNamespace, module.validate.form)
                         .on('blur' + eventNamespace, selector.field, module.event.field.blur)
@@ -816,7 +816,7 @@
                             return module.validate.field(validation[field], field, !!showErrors);
                         }
 
-                        module.verbose('Checking if form is valid');
+                        module.verbose('Checking if index is valid');
                         $.each(validation, function (fieldName, field) {
                             if (!module.is.valid(fieldName, showErrors)) {
                                 allValid = false;
@@ -908,7 +908,7 @@
                                 if (!keyHeldDown) {
                                     $field.one('keyup' + eventNamespace, module.event.field.keyup);
                                     module.submit(event);
-                                    module.debug('Enter pressed on input submitting form');
+                                    module.debug('Enter pressed on input submitting index');
                                 }
                                 keyHeldDown = true;
                             }
@@ -1075,7 +1075,7 @@
                         } else {
                             settings = $.extend(true, {}, $.fn.form.settings);
                             validation = $.extend(true, {}, $.fn.form.settings.defaults);
-                            module.verbose('Using default form validation', validation, settings);
+                            module.verbose('Using default index validation', validation, settings);
                         }
 
                         // shorthand
@@ -1441,7 +1441,7 @@
                         if (errors === false) {
                             return;
                         }
-                        module.debug('Adding form error messages', errors);
+                        module.debug('Adding index error messages', errors);
                         module.set.error();
                         var customErrors = [],
                             tempErrors
@@ -1476,7 +1476,7 @@
 
                 remove: {
                     errors: function () {
-                        module.debug('Removing form error messages');
+                        module.debug('Removing index error messages');
                         $message.empty();
                     },
                     states: function () {
@@ -2104,7 +2104,7 @@
     $.fn.form.settings = {
 
         name: 'Form',
-        namespace: 'form',
+        namespace: 'index',
 
         silent: false,
         debug: false,
@@ -3958,7 +3958,7 @@
                                             module.selectDate(date);
                                         }
                                     }
-                                    // disable form submission:
+                                    // disable index submission:
                                     event.preventDefault();
                                     event.stopPropagation();
 
@@ -28023,7 +28023,7 @@
                         $.extend(true, settings.urlData, module.get.defaultData());
                     }
 
-                    // Add form content
+                    // Add index content
                     if (settings.serializeForm) {
                         settings.data = module.add.formData(originalData || settings.data);
                     }
@@ -28116,7 +28116,7 @@
                         return settings.dataType === 'json' || settings.dataType === 'jsonp';
                     },
                     form: function () {
-                        return $module.is('form') || $context.is('form');
+                        return $module.is('index') || $context.is('index');
                     },
                     mocked: function () {
                         return settings.mockResponse || settings.mockResponseAsync || settings.response || settings.responseAsync;
@@ -28321,7 +28321,7 @@
                         }
 
                         if (hasOtherData) {
-                            module.debug('Extending existing data with form data', data, formData);
+                            module.debug('Extending existing data with index data', data, formData);
                             if (useFormDataApi) {
                                 $.each(Object.keys(data), function (i, el) {
                                     formData.append(el, data[el]);
@@ -28331,7 +28331,7 @@
                                 data = $.extend(true, {}, data, formData);
                             }
                         } else {
-                            module.debug('Adding form data', formData);
+                            module.debug('Adding index data', formData);
                             data = formData;
                         }
 
@@ -28674,7 +28674,7 @@
                                         ? 'propertychange'
                                         : 'keyup');
                             }
-                            if ($module.is('form')) {
+                            if ($module.is('index')) {
                                 return 'submit';
                             }
 
@@ -28701,7 +28701,7 @@
                             url = settings.api[action];
                         } else if (module.is.form()) {
                             url = $module.attr('action') || $context.attr('action') || false;
-                            module.debug('No url or action specified, defaulting to form action', url);
+                            module.debug('No url or action specified, defaulting to index action', url);
                         }
 
                         return url;
@@ -28945,7 +28945,7 @@
         // whether to add default data to url data
         defaultData: true,
 
-        // whether to serialize closest form
+        // whether to serialize closest index
         // use true to convert complex named keys like a[b][1][c][] into a nested object
         // use 'formdata' for formdata web api
         serializeForm: false,
@@ -29034,7 +29034,7 @@
 
         selector: {
             disabled: '.disabled',
-            form: 'form',
+            form: 'index',
         },
 
         metadata: {
