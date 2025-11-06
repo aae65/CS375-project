@@ -63,13 +63,15 @@ app.post("/generate-session", (req, res) => {
             errors.push("Zip must not be empty, be a string, or have spaces");
         }
         if (errors.length > 0) {
-            return res.status(400).json({errors});
+            console.log("Error: ", errors);
+            res.status(400).json({data: errors});
         }
     }
 
     pool.query(`INSERT INTO session 
         DEFAULT VALUES RETURNING session_id;`)
     .then((result) => {
+        console.log("pool query success");
         let data = result.rows[0].session_id;
         let link= `${req.protocol}://${req.get('host')}/session/${data}`;
         //TODO: for new branch ignore if not Vivian or Ashleigh
@@ -77,7 +79,7 @@ app.post("/generate-session", (req, res) => {
     })
     .catch((error) => {
         console.error("Error generating a session:", error);
-        return res.status(500).json({ success: false, message: "Error generating a session." });
+        res.status(500).json({ data: "Error generating a session." });
     })
 });
 
