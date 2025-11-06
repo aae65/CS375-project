@@ -4,12 +4,12 @@ CREATE TABLE session (
 );
 
 CREATE TABLE session_settings (
-    session_id UUID REFERENCES session(session_id),
-    creater_user_id INT SERIAL,
+    session_id UUID PRIMARY KEY REFERENCES session(session_id),
+    creater_user_id SERIAL,
     username VARCHAR(50),
     email VARCHAR(100),
     zipcode VARCHAR(10),
-    end_date TIMESTAMP,
+    end_date TIMESTAMP
 );
 
 CREATE TABLE users (
@@ -26,13 +26,14 @@ CREATE TABLE session_users (
 CREATE TABLE restaurants (
     session_id UUID REFERENCES session(session_id),
     restaurant_id SERIAL PRIMARY KEY,
-    name VARCHAR(100)
+    name VARCHAR(100),
+    address VARCHAR(200),
 );
 
 CREATE TABLE votes (
-    session_id UUID REFERENCES session(session_id),
     vote_id SERIAL PRIMARY KEY,
+    session_id UUID REFERENCES session(session_id),
     user_id INT REFERENCES users(user_id),
     restaurant_id INT REFERENCES restaurants(restaurant_id),
-    vote_type SMALLINT CHECK (vote_type IN (1, -1))
+    UNIQUE(session_id, user_id, restaurant_id)
 );
