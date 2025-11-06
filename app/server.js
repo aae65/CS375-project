@@ -65,7 +65,7 @@ app.get("/session/:session_id", (req, res) => {
     });
 });
 
-app.listen(3000, "0.0.0.0", () => {
+
 app.get("/session", (req, res) => {
     res.sendFile(__dirname + "/public/session.html");
 })
@@ -108,6 +108,6 @@ app.post("/session", (req, res) => {
     }
 })
 
-app.listen(3000, "localhost", () => {
+app.listen(3000, "0.0.0.0", () => {
     console.log("Server running at http://localhost:3000");
 });
