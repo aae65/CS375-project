@@ -4,6 +4,7 @@
         <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
         <link rel="stylesheet" href="/semantic/dist/semantic.min.css">
         <script src="/semantic/dist/semantic.min.js"></script>
+        <script src="/socket.io/socket.io.js"></script>
         <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <style>
@@ -13,17 +14,46 @@
                 border-radius: 8px;
                 margin-top: 8px;
             }
+            .user-counter {
+                position: fixed;
+                top: 10px;
+                right: 10px;
+                z-index: 1000;
+            }
+
         </style>
         <title>Session</title>
         <base href="/">
     </head>
     <body>
+        <!-- User counter -->
+        <div class="user-counter">
+            <div class="ui green label">
+                <i class="users icon"></i>
+                <span id="user-count">1</span> user(s) online
+            </div>
+        </div>
+
         <div class="ui secondary pointing menu" style="padding: 1px">
             <a class="item" data-tab="group">Your Group</a>
             <a class="item" data-tab="vote">Voting</a>
         </div>
         <div class="ui bottom attached tab segment" data-tab="group">
             <h1>Hello <span id="name"></span></h1>
+            <!-- Increment Counter Section -->
+        <div class="ui center aligned container" style="margin: 20px 0;">
+            <div class="ui statistic">
+                <div class="value">
+                    <span id="like-count">0</span>
+                </div>
+                <div class="label">Session Counter</div>
+            </div>
+            <br>
+            <button class="ui red button" id="like-button">
+                Increment this counter - test for connections
+            </button>
+        </div>
+
             <div class="ui stackable one column grid">
                 <div class="column">
                     <div class="ui raised segment">
