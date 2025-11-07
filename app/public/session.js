@@ -10,6 +10,11 @@ $(modal).modal('attach events', shareLink, 'show');
 $('.menu.item').tab();
 document.getElementById("name").textContent = name;
 
+shareLink.addEventListener('click', () => {
+    linkInput.value = window.location.href;
+    $(modal).modal('show');
+});
+
 copyLink.addEventListener('click', () => {
     linkInput.select();
     linkInput.setSelectionRange(0, 99999);
