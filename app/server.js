@@ -2,6 +2,7 @@ const path = require("path");
 const express = require("express");
 const app = express();
 const { Pool } = require('pg');
+const fs = require("fs");
 app.use(express.json());
 
 // connect to Neon db
@@ -91,7 +92,10 @@ app.get("/session/:session_id", (req, res) => {
         if (result.rows.length === 0) {
             return res.status(404).send("Session not found.");
         } else {
-            return res.sendFile(__dirname + "/public/session.html");
+            const htmlPath = path.join(__dirname, "public", "session.html");   // CHANGED
+            let html = fs.readFileSync(htmlPath, "utf8");                      // CHANGED
+            html = html.replace(/YOUR_API_KEY/g, process.env.GOOGLE_MAPS_API_KEY || ""); // CHANGED
+            return res.type("html").send(html);
         }
     })
     .catch((error) => {
