@@ -2,80 +2,278 @@ let linkInput = document.querySelector('#modal input[type="text"]');
 let shareLink = document.getElementById("generate");
 let modal = document.getElementById("modal");
 let copyLink = document.getElementById("copyLink");
-let linkCopied = document.getElementById('link-copied');
-let name = sessionStorage.getItem('name');
+let linkCopied = document.getElementById("link-copied");
+let name = sessionStorage.getItem("name");
 
+$(modal).modal("attach events", shareLink, "show");
+$(".menu.item").tab();
 
-$(modal).modal('attach events', shareLink, 'show');
-$('.menu.item').tab();
-document.getElementById("name").textContent = name;
+// Display stored name
+if (document.getElementById("name")) document.getElementById("name").textContent = name;
 
-copyLink.addEventListener('click', () => {
+// Copy session link to clipboard
+if (copyLink && linkInput) {
+  copyLink.addEventListener("click", () => {
     linkInput.select();
     linkInput.setSelectionRange(0, 99999);
-    document.execCommand('copy');
-    $(copyLink).popup('show');
-});
+    document.execCommand("copy");
+    $(copyLink).popup("show");
+  });
+}
 
 $(copyLink).popup({
-    popup: linkCopied,
-    position: 'top center',
-    on: 'manual'
+  popup: linkCopied,
+  position: 'top center',
+  on: 'manual'
 });
 
+// Map Variables
+let map;
+let mapInited = false;
+let marker = null;
+let infoWindow;
+let resultMarkers = [];
+let lastOverviewId = null;
 
-// Leaflet & OpenStreetMap
-let map, marker;
+// Remove Old Markers
+function clearResultMarkers() {
+  for (const marker of resultMarkers) {
+    if (marker.setMap) marker.setMap(null);
+    else if (marker.map) marker.map = null;
+  }
+  resultMarkers = [];
+}
 
+// Get Google API Key
+function getApiKey() {
+  const loader = document.querySelector("gmpx-api-loader");
+  const apiKey = loader?.getAttribute("key");
+  if (apiKey) return apiKey;
+  const scripts = Array.from(document.scripts);
+  for (const script of scripts) {
+    const src = script.getAttribute("src") || "";
+    const match = src.match(/[?&]key=([^&]+)/);
+    if (match) return decodeURIComponent(match[1]);
+  }
+  return "";
+}
+
+// DOM Setup for Reviews
+function ensureReviewsContainer() {
+  let reviewContainer = document.getElementById("reviews");
+  if (reviewContainer) return reviewContainer;
+  const overview = document.getElementById("overview");
+  reviewContainer = document.createElement("div");
+  reviewContainer.id = "reviews";
+  reviewContainer.style.marginTop = "8px";
+  reviewContainer.className = "ui segment";
+  if (overview && overview.parentNode) {
+    overview.parentNode.insertBefore(reviewContainer, overview.nextSibling);
+  } else {
+    document.body.appendChild(reviewContainer);
+  }
+  return reviewContainer;
+}
+
+// Fetch and Render Reviews
+async function renderReviews(placeId) {
+  const apiKey = getApiKey();
+  if (!apiKey || !placeId) return;
+  const container = ensureReviewsContainer();
+  container.innerHTML = "";
+  const resp = await fetch(`https://places.googleapis.com/v1/places/${placeId}?languageCode=en`, {
+    headers: {
+      "X-Goog-Api-Key": apiKey,
+      "X-Goog-FieldMask": "id,displayName,formattedAddress,reviews.authorAttribution.displayName,reviews.authorAttribution.photoUri,reviews.rating,reviews.text.text"
+    }
+  });
+  if (!resp.ok) return;
+
+  const data = await resp.json();
+  const reviews = data.reviews || [];
+  if (!reviews.length) {
+    container.innerHTML = `<div class="ui message">No reviews available.</div>`;
+    return;
+  }
+
+  const top = reviews.slice(0, 5);
+  const html = top.map(review => {
+    const name = review.authorAttribution?.displayName || "Reviewer";
+    const photo = review.authorAttribution?.photoUri || "";
+    const rating = review.rating ? `⭐ ${review.rating}` : "";
+    const text = review.text?.text || "";
+    const imgTag = photo ? `<img src="${photo}" referrerpolicy="no-referrer" width="32" height="32" style="border-radius:50%;object-fit:cover;margin-right:8px">` : "";
+    return `<div class="item" style="display:flex;align-items:flex-start;margin-bottom:10px">
+              ${imgTag}
+              <div>
+                <div style="font-weight:600">${name} ${rating}</div>
+                <div>${text}</div>
+              </div>
+            </div>`;
+  }).join("");
+  container.innerHTML = `<h4 class="ui header">Reviews</h4><div class="ui list">${html}</div>`;
+}
+
+// Load Place Overview and Reviews
+function setOverviewByPlaceId(placeId) {
+  const overviewEl = document.getElementById("overview");
+  const PlaceCtor = google?.maps?.places?.Place;
+  const supports = !!PlaceCtor?.prototype?.isOpen;
+  if (!overviewEl || !PlaceCtor || !supports) return;
+  if (placeId && placeId === lastOverviewId) return;
+  lastOverviewId = placeId;
+  overviewEl.place = new PlaceCtor({ id: placeId });
+  renderReviews(placeId);
+}
+
+// Map Initialization
 function initMap() {
-    map = L.map('map').setView([0, 0], 2);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap Contributors'
-    }).addTo(map);
+  if (mapInited) return;
+  mapInited = true;
+
+  const start = { lat: 39.9526, lng: -75.1652 };
+  map = new google.maps.Map(document.getElementById("map"), {
+    center: start,
+    zoom: 13,
+    mapId: "DEMO_MAP_ID",
+    mapTypeControl: false,
+  });
+
+  infoWindow = new google.maps.InfoWindow();
+
+  const autocompleteEl = document.getElementById("autocomplete");
+  if (autocompleteEl) {
+    autocompleteEl.addEventListener("gmpx-placechange", () => {
+      const place = autocompleteEl.value;
+      if (place && place.location) {
+        map.panTo(place.location);
+        map.setZoom(15);
+        addOrMoveMarker(place.location, place.displayName || "Selected place");
+        if (place?.id) setOverviewByPlaceId(place.id);
+      }
+    });
+  }
+
+  doNearbySearch();
 }
 
+window.initMap = initMap;
+
+// Add or Move Marker
+function addOrMoveMarker(position, title = "Selected") {
+  if (marker) {
+    marker.setPosition(position);
+  } else {
+    marker = new google.maps.Marker({
+      position,
+      map,
+      title
+    });
+  }
+}
+
+// Search Nearby Restaurants/Cafes
+async function doNearbySearch() {
+  const center = map.getCenter();
+  if (!center) return;
+  const apiKey = getApiKey();
+  if (!apiKey) return;
+
+  clearResultMarkers();
+
+  const body = {
+    includedTypes: ["restaurant", "cafe", "bar"],
+    maxResultCount: 20,
+    rankPreference: "DISTANCE",
+    locationRestriction: {
+      circle: {
+        center: { latitude: center.lat(), longitude: center.lng() },
+        radius: 2000
+      }
+    }
+  };
+
+  const resp = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": apiKey,
+      "X-Goog-FieldMask":
+        "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.photos.name"
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (!resp.ok) return;
+  const data = await resp.json();
+  const places = data.places || [];
+
+  for (const place of places) {
+    const lat = place.location?.latitude;
+    const lng = place.location?.longitude;
+    if (lat == null || lng == null) continue;
+    const pos = { lat, lng };
+
+    const marker = new google.maps.Marker({
+      map,
+      position: pos,
+      title: place.displayName?.text || "Place",
+    });
+
+    marker.addListener("click", () => {
+      const photoHTML = place.photos?.length
+        ? `<img src="https://places.googleapis.com/v1/${place.photos[0].name}/media?max_height_px=120&max_width_px=180&key=${apiKey}" 
+            style="width:100%;max-height:100px;object-fit:cover;border-radius:4px;margin-bottom:4px">`
+        : "";
+
+      infoWindow.setContent(
+        `<div style="max-width:220px;line-height:1.4">
+       ${photoHTML}
+       <div style="font-weight:600;font-size:14px;">${place.displayName?.text || ""}</div>
+       <div style="font-size:12px;color:#555;">${place.formattedAddress || ""}</div>
+       ${place.rating ? `<div style="margin-top:2px;font-size:12px;">⭐ ${place.rating} (${place.userRatingCount || 0})</div>` : ""}
+     </div>`
+      );
+
+      infoWindow.open({ map, anchor: marker });
+      if (place.id) setOverviewByPlaceId(place.id);
+    });
+
+    resultMarkers.push(marker);
+  }
+}
+
+// Geolocation: Show User’s Position
 function showLocation() {
-    if (!navigator.geolocation) {
-        alert("Geolocation not supported by your browser")
-        return;
+  if (!navigator.geolocation) {
+    alert("Geolocation not supported on this browser.");
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const position = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      map.setCenter(position);
+      map.setZoom(14);
+      addOrMoveMarker(position, "You are here");
+      doNearbySearch();
+    },
+    err => {
+      console.error(err);
+      alert("Unable to get your location.");
     }
-
-    navigator.geolocation.getCurrentPosition((position) => {
-            const latitude = position.coords.latitude;
-            const longitude = position.coords.longitude;
-            map.setView([latitude, longitude], 14);
-
-            if (marker) marker.remove();
-
-            marker = L.marker([latitude, longitude])
-                .addTo(map)
-                .bindPopup("You are here")
-                .openPopup();
-        },
-        (error) => {
-            alert("Could not get location:" + error.message);
-        },
-        {enableHighAccuracy: true, timeout: 5000}
-    );
+  );
 }
 
-$('.menu .item').tab({
-    onVisible: function (tabName) {
-        if (tabName === 'group') {
-            initMap();
-            setTimeout(() => map && map.invalidateSize(), 0)
-        }
+// Tab Visibility and Event Bindings
+$(".menu .item").tab({
+  onVisible: function (tabName) {
+    if (tabName === "group" && window.google && google.maps) {
+      initMap();
     }
+  }
 });
 
-window.addEventListener('DOMContentLoaded', () => {
-    const locBtn = document.getElementById('locBtn');
-    if (locBtn) locBtn.addEventListener('click', showLocation);
-
-    const groupActive = document.querySelector('.ui.tab.active[date-tab="group"]');
-    if (groupActive) {
-        initMap();
-        setTimeout(() => map && map.invalidateSize(), 0);
-    }
-})
+window.addEventListener("DOMContentLoaded", () => {
+  const locBtn = document.getElementById("locBtn");
+  if (locBtn) locBtn.addEventListener("click", showLocation);
+});
