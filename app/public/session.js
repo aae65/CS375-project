@@ -5,6 +5,38 @@ let copyLink = document.getElementById("copyLink");
 let linkCopied = document.getElementById("link-copied");
 let name = sessionStorage.getItem("name");
 
+// Socket.IO connection
+const socket = io();
+
+// Get session ID from URL
+function getSessionId() {
+    const path = window.location.pathname;
+    return path.split('/').pop();
+}
+
+// Join session room
+const sessionId = getSessionId();
+if (sessionId) {
+    socket.emit('join-session', sessionId);
+}
+
+// Update user count when it changes
+socket.on('user-count', (count) => {
+    const userCountElement = document.getElementById('user-count');
+    if (userCountElement) {
+        userCountElement.textContent = count;
+    }
+});
+
+// Log connection events
+socket.on('connect', () => {
+    console.log('Connected to server');
+});
+
+socket.on('disconnect', () => {
+    console.log('Disconnected from server');
+});
+
 $(modal).modal("attach events", shareLink, "show");
 $(".menu.item").tab();
 
