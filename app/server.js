@@ -1,6 +1,10 @@
 const path = require("path");
 const express = require("express");
 const app = express();
+const http = require('http');
+const server = http.createServer(app);
+const { Server } = require('socket.io');
+const io = new Server(server);
 const { Pool } = require('pg');
 const fs = require("fs");
 app.use(express.json());
@@ -104,6 +108,38 @@ app.get("/session/:session_id", (req, res) => {
     });
 });
 
-app.listen(3000, "0.0.0.0", () => {
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+    console.log('User connected:', socket.id);
+
+    // Join a session room
+    socket.on('join-session', (sessionId) => {
+        socket.join(`session-${sessionId}`);
+        socket.sessionId = sessionId;
+        
+        // Get user count in room
+        const room = io.sockets.adapter.rooms.get(`session-${sessionId}`);
+        const userCount = room ? room.size : 1;
+        
+        // Tell everyone in the session about the new user count
+        io.to(`session-${sessionId}`).emit('user-count', userCount);
+        
+        console.log(`User ${socket.id} joined session ${sessionId}. Total users: ${userCount}`);
+    });
+
+    socket.on('disconnect', () => {
+        if (socket.sessionId) {
+            // Update user count after disconnect
+            setTimeout(() => {
+                const room = io.sockets.adapter.rooms.get(`session-${socket.sessionId}`);
+                const userCount = room ? room.size : 0;
+                io.to(`session-${socket.sessionId}`).emit('user-count', userCount);
+            }, 100);
+        }
+        console.log('User disconnected:', socket.id);
+    });
+});
+
+server.listen(3000, "0.0.0.0", () => {
     console.log("Server running at http://localhost:3000");
 });
