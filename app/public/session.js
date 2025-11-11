@@ -4,6 +4,10 @@ let modal = document.getElementById("modal");
 let copyLink = document.getElementById("copyLink");
 let linkCopied = document.getElementById("link-copied");
 let name = sessionStorage.getItem("name");
+let vote = document.getElementById("vote");
+let testAdd = document.getElementById("test-add");
+let voteButton = document.getElementById("vote-button");
+let message = document.getElementById("message");
 
 // Socket.IO connection
 const socket = io();
@@ -304,6 +308,49 @@ $(".menu .item").tab({
     }
   }
 });
+
+voteButton.style.display = "none";
+message.textContent = "No restaurants added. Add some to vote!";
+testAdd.addEventListener('click', onTestAddClick);
+voteButton.addEventListener('click', onVoteClick);
+let id = 0;
+
+function onTestAddClick(){
+    message.textContent = "";
+    id++;
+    if (id === 1) {
+        voteButton.style.display = "block";
+    }
+    vote.insertAdjacentHTML("beforeend", `
+      <div class="field">
+        <div class="ui radio checkbox">
+          <input type="radio" name="choice" id="r${id}" value="This is test #${id}">
+          <label>This is test #${id}</label>
+        </div>
+      </div>
+    `);
+}
+
+
+function onVoteClick() {
+    let choices = document.getElementsByName("choice");
+    let selection;
+    for (let i = 0; i < choices.length; i++) {
+        if (choices[i].checked) {
+            selection = choices[i].value;
+            break;
+        }
+    }
+    if (!selection) {
+        message.textContent = "Please select a choice";
+    } else {
+        message.textContent = `You have voted for ${selection}`;
+        voteButton.className = "ui disabled button";
+        for (let i = 0; i < vote.children.length; i++) {
+            vote.children[i].className = "disabled field";
+        }
+    }
+}
 
 window.addEventListener("DOMContentLoaded", () => {
   const locBtn = document.getElementById("locBtn");
