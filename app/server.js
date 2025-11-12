@@ -127,6 +127,28 @@ io.on('connection', (socket) => {
         console.log(`User ${socket.id} joined session ${sessionId}. Total users: ${userCount}`);
     });
 
+    // Handle restaurant addition
+    socket.on('add-restaurant', (data) => {
+        if (socket.sessionId) {
+            console.log(`Restaurant added to session ${socket.sessionId}:`, data);
+            // Broadcast to all users in the session (including sender)
+            io.to(`session-${socket.sessionId}`).emit('restaurant-added', data);
+        }
+    });
+
+    // Handle vote submission
+    socket.on('submit-vote', (data) => {
+        if (socket.sessionId) {
+            console.log(`Vote submitted in session ${socket.sessionId}:`, data);
+            // Broadcast to all users in the session
+            io.to(`session-${socket.sessionId}`).emit('vote-submitted', {
+                userId: socket.id,
+                vote: data.vote,
+                userName: data.userName
+            });
+        }
+    });
+
     socket.on('disconnect', () => {
         if (socket.sessionId) {
             // Update user count after disconnect
