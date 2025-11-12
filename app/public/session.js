@@ -407,17 +407,31 @@ function onVoteClick() {
 function showVoteNotification(userName, votedFor) {
     // Create a temporary notification
     const notification = document.createElement('div');
-    notification.className = 'ui message';
+    notification.className = 'ui positive message';
     notification.style.position = 'fixed';
     notification.style.top = '60px';
-    notification.style.right = '10px';
+    notification.style.right = '-300px'; // Start off-screen to the right
     notification.style.zIndex = '1001';
-    notification.style.minWidth = '200px';
-    notification.innerHTML = `<i class="check icon"></i> ${userName} voted for ${votedFor}`;
+    notification.style.minWidth = '250px';
+    notification.style.maxWidth = '350px';
+    notification.style.transition = 'all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+    notification.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+    notification.innerHTML = `<i class="check circle icon"></i> <strong>${userName}</strong> voted for <em>${votedFor}</em>`;
     
     document.body.appendChild(notification);
     
-    // Remove after 3 seconds
+    // Slide in from the right
+    setTimeout(() => {
+        notification.style.right = '10px';
+    }, 10);
+    
+    // Start fade out after 2.5 seconds
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(20px)';
+    }, 2500);
+    
+    // Remove from DOM after animation completes
     setTimeout(() => {
         notification.remove();
     }, 3000);
