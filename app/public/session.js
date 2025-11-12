@@ -41,6 +41,21 @@ socket.on('disconnect', () => {
     console.log('Disconnected from server');
 });
 
+// Listen for restaurant additions from other users
+socket.on('restaurant-added', (data) => {
+    console.log('Restaurant added:', data);
+    addRestaurantToVotingList(data.id, data.name);
+});
+
+// Listen for vote submissions from other users
+socket.on('vote-submitted', (data) => {
+    console.log('Vote submitted:', data);
+    // You can add visual feedback here, like showing who voted
+    if (data.userName) {
+        showVoteNotification(data.userName, data.vote);
+    }
+});
+
 $(modal).modal("attach events", shareLink, "show");
 $(".menu.item").tab();
 
@@ -186,6 +201,14 @@ function initMap() {
         map.setZoom(15);
         addOrMoveMarker(place.location, place.displayName || "Selected place");
         if (place?.id) setOverviewByPlaceId(place.id);
+        
+        // Add restaurant to voting list via WebSocket
+        if (place.displayName && place.id) {
+          socket.emit('add-restaurant', {
+            id: place.id,
+            name: place.displayName
+          });
+        }
       }
     });
   }
@@ -314,18 +337,40 @@ message.textContent = "No restaurants added. Add some to vote!";
 testAdd.addEventListener('click', onTestAddClick);
 voteButton.addEventListener('click', onVoteClick);
 let id = 0;
+let restaurantIds = new Set(); // Track existing restaurant IDs to avoid duplicates
 
 function onTestAddClick(){
     message.textContent = "";
     id++;
-    if (id === 1) {
+    const restaurantName = `This is test #${id}`;
+    
+    // Emit to WebSocket so all users get the update
+    socket.emit('add-restaurant', {
+        id: id,
+        name: restaurantName
+    });
+}
+
+// Helper function to add restaurant to voting list
+function addRestaurantToVotingList(restaurantId, restaurantName) {
+    // Avoid duplicates
+    if (restaurantIds.has(restaurantId)) {
+        return;
+    }
+    restaurantIds.add(restaurantId);
+    
+    // Update message and show vote button if this is the first restaurant
+    if (restaurantIds.size === 1) {
+        message.textContent = "";
         voteButton.style.display = "block";
     }
+    
+    // Add the restaurant to the voting form
     vote.insertAdjacentHTML("beforeend", `
       <div class="field">
         <div class="ui radio checkbox">
-          <input type="radio" name="choice" id="r${id}" value="This is test #${id}">
-          <label>This is test #${id}</label>
+          <input type="radio" name="choice" id="r${restaurantId}" value="${restaurantName}">
+          <label>${restaurantName}</label>
         </div>
       </div>
     `);
@@ -349,7 +394,33 @@ function onVoteClick() {
         for (let i = 0; i < vote.children.length; i++) {
             vote.children[i].className = "disabled field";
         }
+        
+        // Emit vote to WebSocket
+        socket.emit('submit-vote', {
+            vote: selection,
+            userName: name || 'Anonymous'
+        });
     }
+}
+
+// Helper function to show vote notifications
+function showVoteNotification(userName, votedFor) {
+    // Create a temporary notification
+    const notification = document.createElement('div');
+    notification.className = 'ui message';
+    notification.style.position = 'fixed';
+    notification.style.top = '60px';
+    notification.style.right = '10px';
+    notification.style.zIndex = '1001';
+    notification.style.minWidth = '200px';
+    notification.innerHTML = `<i class="check icon"></i> ${userName} voted for ${votedFor}`;
+    
+    document.body.appendChild(notification);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
 }
 
 window.addEventListener("DOMContentLoaded", () => {
