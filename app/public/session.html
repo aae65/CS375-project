@@ -64,7 +64,7 @@
                 <a class="item active" data-tab="existing">I'm already in this session</a>
                 <a class="item" data-tab="new">I'm new to this session</a>
             </div>
-            
+
             <div class="ui bottom attached tab segment active" data-tab="existing">
                 <div class="ui form" id="existingUserForm">
                     <div class="field">
@@ -75,7 +75,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="ui bottom attached tab segment" data-tab="new">
                 <div class="ui form" id="newUserForm">
                     <div class="field">
@@ -84,7 +84,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="ui error message" id="joinErrorBox" style="display: none;"></div>
         </div>
         <div class="actions">
@@ -95,9 +95,10 @@
     <div id="sessionContent" style="display: none;">
         <div class="ui secondary pointing menu" style="padding: 1px">
                 <a class="item active" data-tab="group">Your Group</a>
-                <a class="item" data-tab="select">Choose Restaurants</a>
-                <a class="item" data-tab="vote">Vote</a>
-            </div>
+        <a class="item" data-tab="select">Choose Restaurants</a>
+        <a class="item" data-tab="vote">Vote</a>
+        <a class="item" data-tab="results">Results</a>
+    </div>
 
         <div class="ui bottom attached tab segment active" data-tab="group">
             <h1>Hello <span id="name"></span></h1>
@@ -190,12 +191,16 @@
             <gmpx-place-overview id="overview"></gmpx-place-overview>
         </div>
 
-        <div class="ui bottom attached tab segment" data-tab="vote">
-            <div class="ui form" id="vote"></div>
-            <button class="ui button" id="vote-button">Vote!</button>
-            <div id="message"></div>
-        </div>
-    </div>    
+    <div class="ui bottom attached tab segment" data-tab="vote">
+        <div class="ui form" id="vote"></div>
+        <button class="ui button" id="vote-button">Vote!</button>
+        <div id="message"></div>
+    </div>
+
+    <div class="ui bottom attached tab segment" data-tab="results">
+        <h1>The winner is:</h1>
+        Nothing yet, make sure everyone has voted!
+    </div>
 </body>
 <script src="session.js"></script>
 </html>
