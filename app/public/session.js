@@ -85,6 +85,8 @@ let marker = null;
 let infoWindow;
 let resultMarkers = [];
 let lastOverviewId = null;
+let placeById = {};
+let currentPlaceForOverview = null;
 
 // Remove Old Markers
 function clearResultMarkers() {
@@ -175,6 +177,40 @@ function setOverviewByPlaceId(placeId) {
   lastOverviewId = placeId;
   overviewEl.place = new PlaceCtor({ id: placeId });
   renderReviews(placeId);
+
+  if (placeById[placeId]) {
+      currentPlaceForOverview = placeById[placeId];
+  }
+
+  else {
+      currentPlaceForOverview = { id: placeId};
+  }
+
+  ensureOverviewAddButton();
+}
+
+function ensureOverviewAddButton() {
+    const overviewEl = document.getElementById("overview");
+    if (!overviewEl || !overviewEl.parentNode) return;
+
+    let button = document.getElementById("overview-add-to-vote");
+    if (!button) {
+        button = document.createElement("button");
+        button.id = "overview-add-to-vote";
+        button.className = "ui primary button";
+        button.style.marginTop = "8px";
+        button.textContent = "Add this place to voting";
+
+        overviewEl.parentNode.insertBefore(button, overviewEl.nextSibling);
+
+        button.addEventListener("click", () => {
+            if (!currentPlaceForOverview) {
+                message.textContent = "Select a place first.";
+                return;
+            }
+            addPlaceToSession(currentPlaceForOverview);
+        });
+    }
 }
 
 // Map Initialization
@@ -193,26 +229,22 @@ function initMap() {
   infoWindow = new google.maps.InfoWindow();
 
   const autocompleteEl = document.getElementById("autocomplete");
-  if (autocompleteEl) {
-    autocompleteEl.addEventListener("gmpx-placechange", () => {
-      const place = autocompleteEl.value;
-      if (place && place.location) {
-        map.panTo(place.location);
-        map.setZoom(15);
-        addOrMoveMarker(place.location, place.displayName || "Selected place");
-        if (place?.id) setOverviewByPlaceId(place.id);
-        
-        // Add restaurant to voting list via WebSocket
-        if (place.displayName && place.id) {
-          socket.emit('add-restaurant', {
-            id: place.id,
-            name: place.displayName
-          });
-        }
-      }
-    });
-  }
+    if (autocompleteEl) {
+        autocompleteEl.addEventListener("gmpx-placechange", () => {
+            const place = autocompleteEl.value;
+            if (place && place.location) {
+                map.panTo(place.location);
+                map.setZoom(15);
+                addOrMoveMarker(place.location, place.displayName || "Selected place");
 
+                if (place?.id) {
+                    placeById[place.id] = place;
+                    currentPlaceForOverview = place;
+                    setOverviewByPlaceId(place.id);
+                }
+            }
+        });
+    }
   doNearbySearch();
 }
 
@@ -273,31 +305,38 @@ async function doNearbySearch() {
     if (lat == null || lng == null) continue;
     const pos = { lat, lng };
 
+    if (place.id) {
+        placeById[place.id] = place;
+    }
+
     const marker = new google.maps.Marker({
       map,
       position: pos,
       title: place.displayName?.text || "Place",
     });
 
-    marker.addListener("click", () => {
-      const photoHTML = place.photos?.length
-        ? `<img src="https://places.googleapis.com/v1/${place.photos[0].name}/media?max_height_px=120&max_width_px=180&key=${apiKey}" 
-            style="width:100%;max-height:100px;object-fit:cover;border-radius:4px;margin-bottom:4px">`
-        : "";
-
-      infoWindow.setContent(
-        `<div style="max-width:220px;line-height:1.4">
+      marker.addListener("click", () => {
+          const photoHTML = place.photos?.length
+              ? `<img src="https://places.googleapis.com/v1/${place.photos[0].name}/media?max_height_px=120&max_width_px=180&key=${apiKey}" 
+        style="width:100%;max-height:100px;object-fit:cover;border-radius:4px;margin-bottom:4px">`
+              : "";
+          infoWindow.setContent(
+              `<div style="max-width:220px;line-height:1.4">
        ${photoHTML}
        <div style="font-weight:600;font-size:14px;">${place.displayName?.text || ""}</div>
        <div style="font-size:12px;color:#555;">${place.formattedAddress || ""}</div>
        ${place.rating ? `<div style="margin-top:2px;font-size:12px;">⭐ ${place.rating} (${place.userRatingCount || 0})</div>` : ""}
      </div>`
-      );
+          );
 
-      infoWindow.open({ map, anchor: marker });
-      if (place.id) setOverviewByPlaceId(place.id);
-    });
+          infoWindow.open({ map, anchor: marker });
 
+          if (place.id) {
+              placeById[place.id] = place;
+              currentPlaceForOverview = place;
+              setOverviewByPlaceId(place.id);
+          }
+      });
     resultMarkers.push(marker);
   }
 }
@@ -348,6 +387,20 @@ function onTestAddClick(){
     socket.emit('add-restaurant', {
         id: id,
         name: restaurantName
+    });
+}
+
+function addPlaceToSession(place) {
+    if (!place || !place.id) return;
+
+    const displayName =
+        (place.displayName && place.displayName.text)
+            ? place.displayName.text
+            : "Unnamed place";
+
+    socket.emit('add-restaurant', {
+        id: place.id,
+        name: displayName
     });
 }
 
