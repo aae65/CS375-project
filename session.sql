@@ -15,7 +15,7 @@ CREATE TABLE session_settings (
 
 CREATE TABLE users (
     user_id SERIAL PRIMARY KEY,
-    username VARCHAR(50)
+    name VARCHAR(50)
 );
 
 CREATE TABLE session_users (
