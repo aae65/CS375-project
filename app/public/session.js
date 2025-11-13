@@ -45,6 +45,7 @@ socket.on('disconnect', () => {
 socket.on('restaurant-added', (data) => {
     console.log('Restaurant added:', data);
     addRestaurantToVotingList(data.id, data.name);
+    showAddNotification(data.name);
 });
 
 // Listen for vote submissions from other users
@@ -140,6 +141,7 @@ async function renderReviews(placeId) {
       "X-Goog-FieldMask": "id,displayName,formattedAddress,reviews.authorAttribution.displayName,reviews.authorAttribution.photoUri,reviews.rating,reviews.text.text"
     }
   });
+
   if (!resp.ok) return;
 
   const data = await resp.json();
@@ -169,39 +171,45 @@ async function renderReviews(placeId) {
 
 // Load Place Overview and Reviews
 function setOverviewByPlaceId(placeId) {
-  const overviewEl = document.getElementById("overview");
-  const PlaceCtor = google?.maps?.places?.Place;
-  const supports = !!PlaceCtor?.prototype?.isOpen;
-  if (!overviewEl || !PlaceCtor || !supports) return;
-  if (placeId && placeId === lastOverviewId) return;
-  lastOverviewId = placeId;
-  overviewEl.place = new PlaceCtor({ id: placeId });
-  renderReviews(placeId);
+    const overviewEl = document.getElementById("overview");
+    const PlaceCtor = google?.maps?.places?.Place;
+    const supports = !!PlaceCtor?.prototype?.isOpen;
+    if (!overviewEl || !PlaceCtor || !supports) return;
+    if (placeId && placeId === lastOverviewId) return;
 
-  if (placeById[placeId]) {
-      currentPlaceForOverview = placeById[placeId];
-  }
+    lastOverviewId = placeId;
+    overviewEl.place = new PlaceCtor({ id: placeId });
+    renderReviews(placeId);
 
-  else {
-      currentPlaceForOverview = { id: placeId};
-  }
+    if (placeById[placeId]) {
+        currentPlaceForOverview = placeById[placeId];
+    }
 
-  ensureOverviewAddButton();
+    else {
+        currentPlaceForOverview = { id: placeId };
+    }
+    ensureOverviewAddButton();
+    showAddButton();
 }
 
 function ensureOverviewAddButton() {
-    const overviewEl = document.getElementById("overview");
-    if (!overviewEl || !overviewEl.parentNode) return;
+    const container = document.getElementById("add-button-container");
+    if (!container) return;
 
     let button = document.getElementById("overview-add-to-vote");
     if (!button) {
         button = document.createElement("button");
         button.id = "overview-add-to-vote";
-        button.className = "ui primary button";
-        button.style.marginTop = "8px";
+        button.className = "ui large primary fluid button";
         button.textContent = "Add this place to voting";
+        button.style.display = "block";
+        button.style.margin = "12px 0";
+        button.style.opacity = "0";
+        button.style.transform = "translateY(-6px)";
+        button.style.pointerEvents = "none";
+        button.style.transition = "opacity 0.25s ease, transform 0.25s ease";
 
-        overviewEl.parentNode.insertBefore(button, overviewEl.nextSibling);
+        container.appendChild(button);
 
         button.addEventListener("click", () => {
             if (!currentPlaceForOverview) {
@@ -211,6 +219,15 @@ function ensureOverviewAddButton() {
             addPlaceToSession(currentPlaceForOverview);
         });
     }
+}
+
+function showAddButton() {
+    const button = document.getElementById("overview-add-to-vote");
+    if (!button) return;
+
+    button.style.opacity = "1";
+    button.style.transform = "translateY(0)";
+    button.style.pointerEvents = "auto";
 }
 
 // Map Initialization
@@ -228,10 +245,10 @@ function initMap() {
 
   infoWindow = new google.maps.InfoWindow();
 
-  const autocompleteEl = document.getElementById("autocomplete");
-    if (autocompleteEl) {
-        autocompleteEl.addEventListener("gmpx-placechange", () => {
-            const place = autocompleteEl.value;
+  const autocompleteElement = document.getElementById("autocomplete");
+    if (autocompleteElement) {
+        autocompleteElement.addEventListener("gmpx-placechange", () => {
+            const place = autocompleteElement.value;
             if (place && place.location) {
                 map.panTo(place.location);
                 map.setZoom(15);
@@ -365,7 +382,7 @@ function showLocation() {
 // Tab Visibility and Event Bindings
 $(".menu .item").tab({
   onVisible: function (tabName) {
-    if (tabName === "group" && window.google && google.maps) {
+    if (tabName === "select" && window.google && google.maps) {
       initMap();
     }
   }
@@ -397,6 +414,8 @@ function addPlaceToSession(place) {
         (place.displayName && place.displayName.text)
             ? place.displayName.text
             : "Unnamed place";
+
+    showAddNotification(displayName);
 
     socket.emit('add-restaurant', {
         id: place.id,
@@ -455,6 +474,40 @@ function onVoteClick() {
         });
     }
 }
+
+// Helper function to show restraunts added to vote notification
+function showAddNotification(restaurantName) {
+    const notification = document.createElement('div');
+    notification.className = 'ui info message';
+    notification.style.position = 'fixed';
+    notification.style.top = '60px';
+    notification.style.right = '-300px';
+    notification.style.zIndex = '1001';
+    notification.style.minWidth = '250px';
+    notification.style.maxWidth = '350px';
+    notification.style.transition = 'all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+    notification.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+    notification.innerHTML = `<i class="plus circle icon"></i> Added <strong>${restaurantName}</strong> to voting`;
+
+    document.body.appendChild(notification);
+
+    // Slide in from the right
+    setTimeout(() => {
+        notification.style.right = '10px';
+    }, 10);
+
+    // Fade out after 2.5 seconds
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(20px)';
+    }, 2500);
+
+    // Remove from DOM after animation completes
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
+}
+
 
 // Helper function to show vote notifications
 function showVoteNotification(userName, votedFor) {

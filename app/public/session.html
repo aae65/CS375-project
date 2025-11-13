@@ -17,6 +17,10 @@
             padding: 0;
         }
 
+        #add-button-container {
+            margin-top: 8px;
+        }
+
         .map-container {
             width: 100%;
             height: 60vh;
@@ -31,36 +35,6 @@
         #map {
             width: 100%;
             height: 100%;
-        }
-
-        .map-toolbar {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            z-index: 5;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 8px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, .08);
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        #results {
-            max-height: 260px;
-            overflow: auto;
-            margin-top: 8px;
-        }
-
-        .result-item {
-            padding: 8px;
-            border-bottom: 1px solid #eee;
-            cursor: pointer;
-        }
-
-        .result-item:hover {
-            background: #f9fafb;
         }
 
         gmpx-place-overview {
@@ -174,6 +148,8 @@
         <div class="map-container">
             <div id="map"></div>
         </div>
+
+        <div id="add-button-container"></div>
 
         <gmpx-place-overview id="overview"></gmpx-place-overview>
     </div>
