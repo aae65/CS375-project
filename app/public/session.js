@@ -77,13 +77,13 @@ function showSessionContent(name) {
     $('.menu .item').tab({
         onVisible: function (tabName) {
             if (tabName === 'vote') {
-                initMap();
-                setTimeout(() => map && map.invalidateSize(), 0);
+                if (!map) {
+                    initMap();
+                }
+                setTimeout(() => map && map.invalidateSize(), 100);
             }
         }
     });
-
-    $('[data-tab="group"]').tab('change tab', 'group');
 }
 
 document.getElementById('joinButton').addEventListener('click', function(e) {
