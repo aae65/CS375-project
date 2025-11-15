@@ -1,11 +1,20 @@
-const path = require("path");
-const express = require("express");
-const app = express();
-const { Pool } = require('pg');
+let path = require("path");
+let express = require("express");
+let app = express();
+let { Pool } = require('pg');
 app.use(express.json());
+let cookieParser = require("cookie-parser");
+app.use(cookieParser());
+
+let cookieOptions = {
+  httpOnly: true, // JS can't access it
+  secure: false, // Set to true only when deploying to HTTPS
+  sameSite: "strict", // only sent to this domain
+  maxAge: 7 * 24 * 60 * 60 * 1000 // 1 week
+};
 
 // connect to Neon db
-const pool = new Pool({
+let pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: {
         rejectUnauthorized: false
@@ -17,19 +26,6 @@ app.use(express.json());
 
 app.get("/", (req, res) => {
     res.sendFile(__dirname + "/public/index.html");
-});
-
-app.get("/api/test", async (req, res) => {
-    try {
-        let result = await pool.query('SELECT * FROM session;');
-        res.json({ 
-            success: true, 
-            data: result.rows, 
-            database: 'Neon (shared)' 
-        });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
 });
 
 app.post("/generate-session", (req, res) => {
@@ -114,17 +110,120 @@ app.post("/generate-session", (req, res) => {
             let creator_user_id = userResult.rows[0].user_id;
             return pool.query(`
                 INSERT INTO session_users (session_id, user_id) VALUES ($1, $2)
-            `, [session_id, creator_user_id]);
-        })
-        .then(() => {
-            let link = `${req.protocol}://${req.get('host')}/session/${session_id}`;
-            res.status(200).json({data: link});
+            `, [session_id, creator_user_id])
+            .then(() => {
+                res.cookie(`session_${session_id}`, creator_user_id, cookieOptions);
+                
+                let link = `${req.protocol}://${req.get('host')}/session/${session_id}`;
+                res.status(200).json({data: link});
+            });
         });
     })
     .catch((error) => {
         console.error("Error generating a session:", error);
         res.status(500).json({ data: "Error generating a session." });
     })
+});
+
+app.post("/session/:session_id/join", (req, res) => {
+    let session_id = req.params.session_id;
+    let { name, existingUserId, isExistingUser } = req.body;
+
+    if (isExistingUser) {
+        // User selected existing name
+
+        if (!existingUserId) {
+            return res.status(400).json({ error: "Please select a user" });
+        }
+        
+        pool.query(`
+            SELECT user_id FROM session_users 
+            WHERE session_id = $1 AND user_id = $2
+        `, [session_id, existingUserId])
+        .then((result) => {
+            if (result.rows.length === 0) {
+                return res.status(400).json({ error: "User not found in session" });
+            }
+    
+            res.cookie(`session_${session_id}`, existingUserId, cookieOptions);
+            
+            return pool.query(`SELECT name FROM users WHERE user_id = $1`, [existingUserId])
+            .then((userResult) => {
+                res.status(200).json({name: userResult.rows[0].name});
+            });
+        })
+        .catch((error) => {
+            console.error("Error selecting existing user:", error);
+            res.status(500).json({ error: "Error selecting user" });
+        });
+        
+    } else {
+        // new user joining
+        if (!name || typeof name !== "string" || name.trim().length === 0) {
+            return res.status(400).json({ error: "Name is required" });
+        }
+
+        pool.query(`INSERT INTO users (name) VALUES ($1) RETURNING user_id`, [name.trim()])
+        .then((result) => {
+            let user_id = result.rows[0].user_id;
+
+            return pool.query(`INSERT INTO session_users (session_id, user_id) VALUES ($1, $2)`, [session_id, user_id])
+            .then(() => {
+                res.cookie(`session_${session_id}`, user_id, cookieOptions);
+
+                res.status(200).json({ name: name.trim() });
+            });
+        })
+        .catch((error) => {
+            console.error("Error joining session:", error);
+            res.status(500).json({ error: "Error joining session" });
+        });
+    }
+});
+
+app.get("/api/session/:session_id/user", (req, res) => {
+    let session_id = req.params.session_id;
+    let userCookie = req.cookies[`session_${session_id}`];
+    
+    if (!userCookie) {
+        return res.status(404).json({ error: "User not found in session" });
+    }
+    
+    pool.query(`
+        SELECT u.name 
+        FROM users u 
+        JOIN session_users su ON u.user_id = su.user_id 
+        WHERE su.session_id = $1 AND u.user_id = $2
+    `, [session_id, userCookie])
+    .then((result) => {
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "User not found" });
+        }
+        res.status(200).json({ name: result.rows[0].name });
+    })
+    .catch((error) => {
+        console.error("Error fetching user:", error);
+        res.status(500).json({ error: "Error fetching user" });
+    });
+});
+
+app.get("/api/session/:session_id/users", (req, res) => {
+    let session_id = req.params.session_id;
+    
+    pool.query(`
+        SELECT u.user_id, u.name 
+        FROM users u 
+        JOIN session_users su ON u.user_id = su.user_id 
+        WHERE su.session_id = $1
+        ORDER BY u.name
+    `, [session_id])
+    .then((result) => {
+        res.status(200).json({ users: result.rows });
+    })
+    .catch((error) => {
+        console.error("Error fetching session users:", error);
+        res.status(500).json({ error: "Error fetching users" });
+    });
 });
 
 app.get("/session/:session_id", (req, res) => {
@@ -135,7 +234,12 @@ app.get("/session/:session_id", (req, res) => {
         if (result.rows.length === 0) {
             return res.status(404).send("Session not found.");
         } else {
-            return res.sendFile(__dirname + "/public/session.html");
+            let userCookie = req.cookies[`session_${session_id}`];
+            if (userCookie) {
+                return res.sendFile(__dirname + "/public/session.html");
+            } else {
+                return res.sendFile(__dirname + "/public/session.html");
+            }
         }
     })
     .catch((error) => {
