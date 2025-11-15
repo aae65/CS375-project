@@ -2,8 +2,13 @@ let path = require("path");
 let express = require("express");
 let app = express();
 let { Pool } = require('pg');
-app.use(express.json());
+let http = require('http');
+let server = http.createServer(app);
+let { Server } = require('socket.io');
+let io = new Server(server);
+let fs = require("fs");
 let cookieParser = require("cookie-parser");
+app.use(express.json());
 app.use(cookieParser());
 
 let cookieOptions = {
@@ -234,7 +239,10 @@ app.get("/session/:session_id", (req, res) => {
         if (result.rows.length === 0) {
             return res.status(404).send("Session not found.");
         } else {
-            return res.sendFile(__dirname + "/public/session.html");
+            let htmlPath = path.join(__dirname, "public", "session.html");  
+            let html = fs.readFileSync(htmlPath, "utf8");                     
+            html = html.replace(/YOUR_API_KEY/g, process.env.GOOGLE_MAPS_API_KEY || "");
+            return res.type("html").send(html);
         }
     })
     .catch((error) => {
@@ -243,6 +251,60 @@ app.get("/session/:session_id", (req, res) => {
     });
 });
 
-app.listen(3000, "0.0.0.0", () => {
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+    console.log('User connected:', socket.id);
+
+    // Join a session room
+    socket.on('join-session', (sessionId) => {
+        socket.join(`session-${sessionId}`);
+        socket.sessionId = sessionId;
+        
+        // Get user count in room
+        const room = io.sockets.adapter.rooms.get(`session-${sessionId}`);
+        const userCount = room ? room.size : 1;
+        
+        // Tell everyone in the session about the new user count
+        io.to(`session-${sessionId}`).emit('user-count', userCount);
+        
+        console.log(`User ${socket.id} joined session ${sessionId}. Total users: ${userCount}`);
+    });
+
+    // Handle restaurant addition
+    socket.on('add-restaurant', (data) => {
+        if (socket.sessionId) {
+            console.log(`Restaurant added to session ${socket.sessionId}:`, data);
+            // Broadcast to all users in the session (including sender)
+            io.to(`session-${socket.sessionId}`).emit('restaurant-added', data);
+        }
+    });
+
+    // Handle vote submission
+    socket.on('submit-vote', (data) => {
+        if (socket.sessionId) {
+            console.log(`Vote submitted in session ${socket.sessionId}:`, data);
+            // Broadcast to all users in the session
+            io.to(`session-${socket.sessionId}`).emit('vote-submitted', {
+                userId: socket.id,
+                vote: data.vote,
+                userName: data.userName
+            });
+        }
+    });
+
+    socket.on('disconnect', () => {
+        if (socket.sessionId) {
+            // Update user count after disconnect
+            setTimeout(() => {
+                const room = io.sockets.adapter.rooms.get(`session-${socket.sessionId}`);
+                const userCount = room ? room.size : 0;
+                io.to(`session-${socket.sessionId}`).emit('user-count', userCount);
+            }, 100);
+        }
+        console.log('User disconnected:', socket.id);
+    });
+});
+
+server.listen(3000, "0.0.0.0", () => {
     console.log("Server running at http://localhost:3000");
 });
