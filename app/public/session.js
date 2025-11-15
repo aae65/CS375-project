@@ -42,10 +42,10 @@ socket.on('disconnect', () => {
 });
 
 // Listen for restaurant additions from other users
-socket.on('restaurant-added', (data) => {
-    console.log('Restaurant added:', data);
-    addRestaurantToVotingList(data.id, data.name);
-    showAddNotification(data.name);
+socket.on('restaurant-added', (restaurant) => {
+    console.log('Restaurant added:', restaurant);
+    addRestaurantToVotingList(restaurant);
+    showAddNotification(restaurant.name);
 });
 
 // Listen for vote submissions from other users
@@ -65,18 +65,18 @@ if (document.getElementById("name")) document.getElementById("name").textContent
 
 // Copy session link to clipboard
 if (copyLink && linkInput) {
-  copyLink.addEventListener("click", () => {
-    linkInput.select();
-    linkInput.setSelectionRange(0, 99999);
-    document.execCommand("copy");
-    $(copyLink).popup("show");
-  });
+    copyLink.addEventListener("click", () => {
+        linkInput.select();
+        linkInput.setSelectionRange(0, 99999);
+        document.execCommand("copy");
+        $(copyLink).popup("show");
+    });
 }
 
 $(copyLink).popup({
-  popup: linkCopied,
-  position: 'top center',
-  on: 'manual'
+    popup: linkCopied,
+    position: 'top center',
+    on: 'manual'
 });
 
 // Map Variables
@@ -91,82 +91,82 @@ let currentPlaceForOverview = null;
 
 // Remove Old Markers
 function clearResultMarkers() {
-  for (const marker of resultMarkers) {
-    if (marker.setMap) marker.setMap(null);
-    else if (marker.map) marker.map = null;
-  }
-  resultMarkers = [];
+    for (const marker of resultMarkers) {
+        if (marker.setMap) marker.setMap(null);
+        else if (marker.map) marker.map = null;
+    }
+    resultMarkers = [];
 }
 
 // Get Google API Key
 function getApiKey() {
-  const loader = document.querySelector("gmpx-api-loader");
-  const apiKey = loader?.getAttribute("key");
-  if (apiKey) return apiKey;
-  const scripts = Array.from(document.scripts);
-  for (const script of scripts) {
-    const src = script.getAttribute("src") || "";
-    const match = src.match(/[?&]key=([^&]+)/);
-    if (match) return decodeURIComponent(match[1]);
-  }
-  return "";
+    const loader = document.querySelector("gmpx-api-loader");
+    const apiKey = loader?.getAttribute("key");
+    if (apiKey) return apiKey;
+    const scripts = Array.from(document.scripts);
+    for (const script of scripts) {
+        const src = script.getAttribute("src") || "";
+        const match = src.match(/[?&]key=([^&]+)/);
+        if (match) return decodeURIComponent(match[1]);
+    }
+    return "";
 }
 
 // DOM Setup for Reviews
 function ensureReviewsContainer() {
-  let reviewContainer = document.getElementById("reviews");
-  if (reviewContainer) return reviewContainer;
-  const overview = document.getElementById("overview");
-  reviewContainer = document.createElement("div");
-  reviewContainer.id = "reviews";
-  reviewContainer.style.marginTop = "8px";
-  reviewContainer.className = "ui segment";
-  if (overview && overview.parentNode) {
-    overview.parentNode.insertBefore(reviewContainer, overview.nextSibling);
-  } else {
-    document.body.appendChild(reviewContainer);
-  }
-  return reviewContainer;
+    let reviewContainer = document.getElementById("reviews");
+    if (reviewContainer) return reviewContainer;
+    const overview = document.getElementById("overview");
+    reviewContainer = document.createElement("div");
+    reviewContainer.id = "reviews";
+    reviewContainer.style.marginTop = "8px";
+    reviewContainer.className = "ui segment";
+    if (overview && overview.parentNode) {
+        overview.parentNode.insertBefore(reviewContainer, overview.nextSibling);
+    } else {
+        document.body.appendChild(reviewContainer);
+    }
+    return reviewContainer;
 }
 
 // Fetch and Render Reviews
 async function renderReviews(placeId) {
-  const apiKey = getApiKey();
-  if (!apiKey || !placeId) return;
-  const container = ensureReviewsContainer();
-  container.innerHTML = "";
-  const resp = await fetch(`https://places.googleapis.com/v1/places/${placeId}?languageCode=en`, {
-    headers: {
-      "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": "id,displayName,formattedAddress,reviews.authorAttribution.displayName,reviews.authorAttribution.photoUri,reviews.rating,reviews.text.text"
+    const apiKey = getApiKey();
+    if (!apiKey || !placeId) return;
+    const container = ensureReviewsContainer();
+    container.innerHTML = "";
+    const resp = await fetch(`https://places.googleapis.com/v1/places/${placeId}?languageCode=en`, {
+        headers: {
+            "X-Goog-Api-Key": apiKey,
+            "X-Goog-FieldMask": "id,displayName,formattedAddress,reviews.authorAttribution.displayName,reviews.authorAttribution.photoUri,reviews.rating,reviews.text.text"
+        }
+    });
+
+    if (!resp.ok) return;
+
+    const data = await resp.json();
+    const reviews = data.reviews || [];
+    if (!reviews.length) {
+        container.innerHTML = `<div class="ui message">No reviews available.</div>`;
+        return;
     }
-  });
 
-  if (!resp.ok) return;
-
-  const data = await resp.json();
-  const reviews = data.reviews || [];
-  if (!reviews.length) {
-    container.innerHTML = `<div class="ui message">No reviews available.</div>`;
-    return;
-  }
-
-  const top = reviews.slice(0, 5);
-  const html = top.map(review => {
-    const name = review.authorAttribution?.displayName || "Reviewer";
-    const photo = review.authorAttribution?.photoUri || "";
-    const rating = review.rating ? `⭐ ${review.rating}` : "";
-    const text = review.text?.text || "";
-    const imgTag = photo ? `<img src="${photo}" referrerpolicy="no-referrer" width="32" height="32" style="border-radius:50%;object-fit:cover;margin-right:8px">` : "";
-    return `<div class="item" style="display:flex;align-items:flex-start;margin-bottom:10px">
+    const top = reviews.slice(0, 5);
+    const html = top.map(review => {
+        const name = review.authorAttribution?.displayName || "Reviewer";
+        const photo = review.authorAttribution?.photoUri || "";
+        const rating = review.rating ? `⭐ ${review.rating}` : "";
+        const text = review.text?.text || "";
+        const imgTag = photo ? `<img src="${photo}" referrerpolicy="no-referrer" width="32" height="32" style="border-radius:50%;object-fit:cover;margin-right:8px">` : "";
+        return `<div class="item" style="display:flex;align-items:flex-start;margin-bottom:10px">
               ${imgTag}
               <div>
                 <div style="font-weight:600">${name} ${rating}</div>
                 <div>${text}</div>
               </div>
             </div>`;
-  }).join("");
-  container.innerHTML = `<h4 class="ui header">Reviews</h4><div class="ui list">${html}</div>`;
+    }).join("");
+    container.innerHTML = `<h4 class="ui header">Reviews</h4><div class="ui list">${html}</div>`;
 }
 
 // Load Place Overview and Reviews
@@ -192,6 +192,7 @@ function setOverviewByPlaceId(placeId) {
     showAddButton();
 }
 
+// Add Button for Overview
 function ensureOverviewAddButton() {
     const container = document.getElementById("add-button-container");
     if (!container) return;
@@ -221,6 +222,7 @@ function ensureOverviewAddButton() {
     }
 }
 
+// Show Add Button on Overview
 function showAddButton() {
     const button = document.getElementById("overview-add-to-vote");
     if (!button) return;
@@ -232,20 +234,20 @@ function showAddButton() {
 
 // Map Initialization
 function initMap() {
-  if (mapInited) return;
-  mapInited = true;
+    if (mapInited) return;
+    mapInited = true;
 
-  const start = { lat: 39.9526, lng: -75.1652 };
-  map = new google.maps.Map(document.getElementById("map"), {
-    center: start,
-    zoom: 13,
-    mapId: "DEMO_MAP_ID",
-    mapTypeControl: false,
-  });
+    const start = { lat: 39.9526, lng: -75.1652 };
+    map = new google.maps.Map(document.getElementById("map"), {
+        center: start,
+        zoom: 13,
+        mapId: "DEMO_MAP_ID",
+        mapTypeControl: false,
+    });
 
-  infoWindow = new google.maps.InfoWindow();
+    infoWindow = new google.maps.InfoWindow();
 
-  const autocompleteElement = document.getElementById("autocomplete");
+    const autocompleteElement = document.getElementById("autocomplete");
     if (autocompleteElement) {
         autocompleteElement.addEventListener("gmpx-placechange", () => {
             const place = autocompleteElement.value;
@@ -262,130 +264,130 @@ function initMap() {
             }
         });
     }
-  doNearbySearch();
+    doNearbySearch();
 }
 
 window.initMap = initMap;
 
 // Add or Move Marker
 function addOrMoveMarker(position, title = "Selected") {
-  if (marker) {
-    marker.setPosition(position);
-  } else {
-    marker = new google.maps.Marker({
-      position,
-      map,
-      title
-    });
-  }
+    if (marker) {
+        marker.setPosition(position);
+    } else {
+        marker = new google.maps.Marker({
+            position,
+            map,
+            title
+        });
+    }
 }
 
 // Search Nearby Restaurants/Cafes
 async function doNearbySearch() {
-  const center = map.getCenter();
-  if (!center) return;
-  const apiKey = getApiKey();
-  if (!apiKey) return;
+    const center = map.getCenter();
+    if (!center) return;
+    const apiKey = getApiKey();
+    if (!apiKey) return;
 
-  clearResultMarkers();
+    clearResultMarkers();
 
-  const body = {
-    includedTypes: ["restaurant", "cafe", "bar"],
-    maxResultCount: 20,
-    rankPreference: "DISTANCE",
-    locationRestriction: {
-      circle: {
-        center: { latitude: center.lat(), longitude: center.lng() },
-        radius: 2000
-      }
-    }
-  };
+    const body = {
+        includedTypes: ["restaurant", "cafe", "bar"],
+        maxResultCount: 20,
+        rankPreference: "DISTANCE",
+        locationRestriction: {
+            circle: {
+                center: { latitude: center.lat(), longitude: center.lng() },
+                radius: 2000
+            }
+        }
+    };
 
-  const resp = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask":
-        "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.photos.name"
-    },
-    body: JSON.stringify(body)
-  });
-
-  if (!resp.ok) return;
-  const data = await resp.json();
-  const places = data.places || [];
-
-  for (const place of places) {
-    const lat = place.location?.latitude;
-    const lng = place.location?.longitude;
-    if (lat == null || lng == null) continue;
-    const pos = { lat, lng };
-
-    if (place.id) {
-        placeById[place.id] = place;
-    }
-
-    const marker = new google.maps.Marker({
-      map,
-      position: pos,
-      title: place.displayName?.text || "Place",
+    const resp = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": apiKey,
+            "X-Goog-FieldMask":
+                "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.priceLevel,places.photos.name"
+        },
+        body: JSON.stringify(body)
     });
 
-      marker.addListener("click", () => {
-          const photoHTML = place.photos?.length
-              ? `<img src="https://places.googleapis.com/v1/${place.photos[0].name}/media?max_height_px=120&max_width_px=180&key=${apiKey}" 
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const places = data.places || [];
+
+    for (const place of places) {
+        const lat = place.location?.latitude;
+        const lng = place.location?.longitude;
+        if (lat == null || lng == null) continue;
+        const pos = { lat, lng };
+
+        if (place.id) {
+            placeById[place.id] = place;
+        }
+
+        const marker = new google.maps.Marker({
+            map,
+            position: pos,
+            title: place.displayName?.text || "Place",
+        });
+
+        marker.addListener("click", () => {
+            const photoHTML = place.photos?.length
+                ? `<img src="https://places.googleapis.com/v1/${place.photos[0].name}/media?max_height_px=120&max_width_px=180&key=${apiKey}" 
         style="width:100%;max-height:100px;object-fit:cover;border-radius:4px;margin-bottom:4px">`
-              : "";
-          infoWindow.setContent(
-              `<div style="max-width:220px;line-height:1.4">
+                : "";
+            infoWindow.setContent(
+                `<div style="max-width:220px;line-height:1.4">
        ${photoHTML}
        <div style="font-weight:600;font-size:14px;">${place.displayName?.text || ""}</div>
        <div style="font-size:12px;color:#555;">${place.formattedAddress || ""}</div>
        ${place.rating ? `<div style="margin-top:2px;font-size:12px;">⭐ ${place.rating} (${place.userRatingCount || 0})</div>` : ""}
      </div>`
-          );
+            );
 
-          infoWindow.open({ map, anchor: marker });
+            infoWindow.open({ map, anchor: marker });
 
-          if (place.id) {
-              placeById[place.id] = place;
-              currentPlaceForOverview = place;
-              setOverviewByPlaceId(place.id);
-          }
-      });
-    resultMarkers.push(marker);
-  }
+            if (place.id) {
+                placeById[place.id] = place;
+                currentPlaceForOverview = place;
+                setOverviewByPlaceId(place.id);
+            }
+        });
+        resultMarkers.push(marker);
+    }
 }
 
 // Geolocation: Show User’s Position
 function showLocation() {
-  if (!navigator.geolocation) {
-    alert("Geolocation not supported on this browser.");
-    return;
-  }
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-      const position = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-      map.setCenter(position);
-      map.setZoom(14);
-      addOrMoveMarker(position, "You are here");
-      doNearbySearch();
-    },
-    err => {
-      console.error(err);
-      alert("Unable to get your location.");
+    if (!navigator.geolocation) {
+        alert("Geolocation not supported on this browser.");
+        return;
     }
-  );
+    navigator.geolocation.getCurrentPosition(
+        pos => {
+            const position = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            map.setCenter(position);
+            map.setZoom(14);
+            addOrMoveMarker(position, "You are here");
+            doNearbySearch();
+        },
+        err => {
+            console.error(err);
+            alert("Unable to get your location.");
+        }
+    );
 }
 
 // Tab Visibility and Event Bindings
 $(".menu .item").tab({
-  onVisible: function (tabName) {
-    if (tabName === "select" && window.google && google.maps) {
-      initMap();
+    onVisible: function (tabName) {
+        if (tabName === "select" && window.google && google.maps) {
+            initMap();
+        }
     }
-  }
 });
 
 voteButton.style.display = "none";
@@ -393,20 +395,25 @@ message.textContent = "No restaurants added. Add some to vote!";
 testAdd.addEventListener('click', onTestAddClick);
 voteButton.addEventListener('click', onVoteClick);
 let id = 0;
-let restaurantIds = new Set(); // Track existing restaurant IDs to avoid duplicates
+let restaurantIds = new Set();
 
 function onTestAddClick(){
     message.textContent = "";
     id++;
     const restaurantName = `This is test #${id}`;
-    
+
     // Emit to WebSocket so all users get the update
     socket.emit('add-restaurant', {
         id: id,
-        name: restaurantName
+        name: restaurantName,
+        address: "",
+        rating: null,
+        userRatingCount: null,
+        priceLevel: null
     });
 }
 
+// Helper function to add place to session
 function addPlaceToSession(place) {
     if (!place || !place.id) return;
 
@@ -415,37 +422,71 @@ function addPlaceToSession(place) {
             ? place.displayName.text
             : "Unnamed place";
 
+    const restaurantData = {
+        id: place.id,
+        name: displayName,
+        address: place.formattedAddress || "",
+        rating: place.rating || null,
+        userRatingCount: place.userRatingCount || null,
+        priceLevel: place.priceLevel || null
+    }
+
     showAddNotification(displayName);
 
-    socket.emit('add-restaurant', {
-        id: place.id,
-        name: displayName
-    });
+    socket.emit('add-restaurant',restaurantData);
 }
 
 // Helper function to add restaurant to voting list
-function addRestaurantToVotingList(restaurantId, restaurantName) {
+function addRestaurantToVotingList(restaurant) {
+    const { id, name, address, rating, userRatingCount, priceLevel } = restaurant;
+
     // Avoid duplicates
-    if (restaurantIds.has(restaurantId)) {
+    if (restaurantIds.has(id)) {
         return;
     }
-    restaurantIds.add(restaurantId);
-    
+    restaurantIds.add(id);
+
     // Update message and show vote button if this is the first restaurant
     if (restaurantIds.size === 1) {
         message.textContent = "";
         voteButton.style.display = "block";
     }
-    
+
+    // Build details for display
+    const details = [];
+
+    if (rating) {
+        const ratingText = `⭐ ${rating}${userRatingCount ? ` (${userRatingCount})` : ""}`;
+        details.push(ratingText);
+    }
+
+    if (typeof priceLevel === "number") {
+        details.push("$".repeat(priceLevel + 1));
+    }
+
+    if (address) {
+        details.push(address);
+    }
+
+    const detailsHtml = details.length
+        ? `<div style="font-size: 0.85em; color: #555; margin-top: 2px;">${details.join(" • ")}</div>`
+        : "";
+
     // Add the restaurant to the voting form
-    vote.insertAdjacentHTML("beforeend", `
+    vote.insertAdjacentHTML(
+        "beforeend",
+        `
       <div class="field">
         <div class="ui radio checkbox">
-          <input type="radio" name="choice" id="r${restaurantId}" value="${restaurantName}">
-          <label>${restaurantName}</label>
+          <input type="radio" name="choice" id="r${id}" value="${name}">
+          <label>
+            <div><strong>${name}</strong></div>
+            ${detailsHtml}
+          </label>
         </div>
       </div>
-    `);
+    `
+    );
 }
 
 
@@ -466,7 +507,7 @@ function onVoteClick() {
         for (let i = 0; i < vote.children.length; i++) {
             vote.children[i].className = "disabled field";
         }
-        
+
         // Emit vote to WebSocket
         socket.emit('submit-vote', {
             vote: selection,
@@ -523,20 +564,20 @@ function showVoteNotification(userName, votedFor) {
     notification.style.transition = 'all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
     notification.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
     notification.innerHTML = `<i class="check circle icon"></i> <strong>${userName}</strong> voted for <em>${votedFor}</em>`;
-    
+
     document.body.appendChild(notification);
-    
+
     // Slide in from the right
     setTimeout(() => {
         notification.style.right = '10px';
     }, 10);
-    
+
     // Start fade out after 2.5 seconds
     setTimeout(() => {
         notification.style.opacity = '0';
         notification.style.transform = 'translateX(20px)';
     }, 2500);
-    
+
     // Remove from DOM after animation completes
     setTimeout(() => {
         notification.remove();
@@ -544,6 +585,6 @@ function showVoteNotification(userName, votedFor) {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
-  const locBtn = document.getElementById("locBtn");
-  if (locBtn) locBtn.addEventListener("click", showLocation);
+    const locBtn = document.getElementById("locBtn");
+    if (locBtn) locBtn.addEventListener("click", showLocation);
 });
