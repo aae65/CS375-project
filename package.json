@@ -4,6 +4,7 @@
     "start:local": "env-cmd node app/server.js"
   },
   "dependencies": {
+    "cookie-parser": "^1.4.6",
     "env-cmd": "^10.1.0",
     "express": "^5.1.0",
     "fomantic-ui": "^2.9.4",

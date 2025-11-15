@@ -3,11 +3,14 @@ let shareLink = document.getElementById("generate");
 let modal = document.getElementById("modal");
 let copyLink = document.getElementById("copyLink");
 let linkCopied = document.getElementById("link-copied");
-let name = sessionStorage.getItem("name");
+let name = sessionStorage.getItem("name") || "";
 let vote = document.getElementById("vote");
 let testAdd = document.getElementById("test-add");
 let voteButton = document.getElementById("vote-button");
 let message = document.getElementById("message");
+let session_id = window.location.pathname.split('/')[2];
+let joinModal = document.getElementById('joinModal');
+let sessionContent = document.getElementById('sessionContent');
 
 // Socket.IO connection
 const socket = io();
@@ -52,32 +55,200 @@ socket.on('restaurant-added', (data) => {
 socket.on('vote-submitted', (data) => {
     console.log('Vote submitted:', data);
     // You can add visual feedback here, like showing who voted
-    if (data.userName) {
-        showVoteNotification(data.userName, data.vote);
+    if (data.name) {
+        showVoteNotification(data.name, data.vote);
     }
 });
 
-$(modal).modal("attach events", shareLink, "show");
-$(".menu.item").tab();
-
 // Display stored name
-if (document.getElementById("name")) document.getElementById("name").textContent = name;
-
-// Copy session link to clipboard
-if (copyLink && linkInput) {
-  copyLink.addEventListener("click", () => {
-    linkInput.select();
-    linkInput.setSelectionRange(0, 99999);
-    document.execCommand("copy");
-    $(copyLink).popup("show");
-  });
+let storedName = sessionStorage.getItem("name");
+let nameElement = document.getElementById("name");
+if (storedName && nameElement) {
+    nameElement.textContent = storedName;
 }
 
-$(copyLink).popup({
-  popup: linkCopied,
-  position: 'top center',
-  on: 'manual'
+// Check if user is already in session via cookie
+fetch(`/api/session/${session_id}/user`)
+.then(response => response.json())
+.then(data => {
+    if (data.name) {
+        showSessionContent(data.name);
+    } else {
+        showJoinModal();
+    }
+}).catch(error => {
+    console.error('Error fetching user:', error);
+    showJoinModal();
 });
+
+function showJoinModal() {
+    sessionContent.style.display = 'none';
+    loadExistingUsers();
+    
+    $('#joinTabs .item').tab();
+    $('.ui.dropdown').dropdown();
+    
+    $(joinModal).modal({
+        closable: false,
+        onApprove: function() {
+            return false;
+        }
+    }).modal('show');
+}
+
+function loadExistingUsers() {
+    fetch(`/api/session/${session_id}/users`)
+    .then(response => response.json())
+    .then(data => {
+        let dropdown = document.getElementById('existingUserSelect');
+
+        dropdown.textContent = '';
+
+        let defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = 'Choose your name...';
+        dropdown.append(defaultOption);
+        
+        data.users.forEach(user => {
+            let option = document.createElement('option');
+            option.value = user.user_id;
+            option.textContent = user.name;
+            dropdown.append(option);
+        });
+    
+        $('.ui.dropdown').dropdown('refresh');
+    })
+    .catch(error => {
+        console.error('Error loading users:', error);
+    });
+}
+
+function showSessionContent(name) {
+    document.getElementById("name").textContent = name;
+    sessionContent.style.display = 'block';
+    $(joinModal).modal('hide');
+
+    initializeShareFunctionality();
+
+    let locBtn = document.getElementById('locBtn');
+    if (locBtn) locBtn.addEventListener('click', showLocation);
+
+    $('.menu .item').tab({
+        onVisible: function (tabName) {
+            // Tab Visibility and Event Bindings
+            if (tabName === 'select' || tabName === 'vote') {
+                if (!map) {
+                    initMap();
+                }
+                setTimeout(() => map && map.invalidateSize(), 100);
+            }
+        }
+    });
+}
+
+document.getElementById('joinButton').addEventListener('click', function(e) {
+    e.preventDefault();
+    
+    let joinErrorBox = document.getElementById('joinErrorBox');
+    let activeTab = document.querySelector('.tab.segment.active').getAttribute('data-tab');
+    
+    if (activeTab === 'existing') {
+        let selectedUserId = document.getElementById('existingUserSelect').value;
+        
+        if (!selectedUserId) {
+            joinErrorBox.textContent = 'Please select your name from the list';
+            joinErrorBox.style.display = 'block';
+            return;
+        }
+        
+        fetch(`/session/${session_id}/join`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                isExistingUser: true,
+                existingUserId: selectedUserId
+            })
+        })
+        .then(response => {
+            if (response.status === 200) {
+                return response.json().then(data => {
+                    showSessionContent(data.name);
+                });
+            } else {
+                return response.json().then(data => {
+                    joinErrorBox.textContent = data.error || 'Error selecting user';
+                    joinErrorBox.style.display = 'block';
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            joinErrorBox.textContent = 'Network error. Please try again.';
+            joinErrorBox.style.display = 'block';
+        });
+        
+    } else {
+        let newName = document.querySelector('input[name="newName"]').value;
+        
+        if (!newName || newName.trim().length === 0) {
+            joinErrorBox.textContent = 'Please enter your name';
+            joinErrorBox.style.display = 'block';
+            return;
+        }
+        
+        fetch(`/session/${session_id}/join`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                isExistingUser: false,
+                name: newName
+            })
+        })
+        .then(response => {
+            if (response.status === 200) {
+                return response.json().then(data => {
+                    showSessionContent(data.name);
+                });
+            } else {
+                return response.json().then(data => {
+                    joinErrorBox.textContent = data.error || 'Error joining session';
+                    joinErrorBox.style.display = 'block';
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            joinErrorBox.textContent = 'Network error. Please try again.';
+            joinErrorBox.style.display = 'block';
+        });
+    }
+});
+
+function initializeShareFunctionality() {
+    // Share modal functionality
+    $(modal).modal('attach events', shareLink, 'show');
+    
+    shareLink.addEventListener('click', () => {
+        linkInput.value = window.location.href;
+        $(modal).modal('show');
+    });
+
+// Copy session link to clipboard
+    if (copyLink && linkInput) {
+        copyLink.addEventListener("click", () => {
+            linkInput.select();
+            linkInput.setSelectionRange(0, 99999);
+            document.execCommand("copy");
+            $(copyLink).popup("show");
+        });
+    }
+
+    $(copyLink).popup({
+        popup: linkCopied,
+        position: 'top center',
+        on: 'manual'
+    });
+}
 
 // Map Variables
 let map;
@@ -91,82 +262,82 @@ let currentPlaceForOverview = null;
 
 // Remove Old Markers
 function clearResultMarkers() {
-  for (const marker of resultMarkers) {
-    if (marker.setMap) marker.setMap(null);
-    else if (marker.map) marker.map = null;
-  }
-  resultMarkers = [];
+    for (const marker of resultMarkers) {
+        if (marker.setMap) marker.setMap(null);
+        else if (marker.map) marker.map = null;
+    }
+    resultMarkers = [];
 }
 
 // Get Google API Key
 function getApiKey() {
-  const loader = document.querySelector("gmpx-api-loader");
-  const apiKey = loader?.getAttribute("key");
-  if (apiKey) return apiKey;
-  const scripts = Array.from(document.scripts);
-  for (const script of scripts) {
-    const src = script.getAttribute("src") || "";
-    const match = src.match(/[?&]key=([^&]+)/);
-    if (match) return decodeURIComponent(match[1]);
-  }
-  return "";
+    const loader = document.querySelector("gmpx-api-loader");
+    const apiKey = loader?.getAttribute("key");
+    if (apiKey) return apiKey;
+    const scripts = Array.from(document.scripts);
+    for (const script of scripts) {
+        const src = script.getAttribute("src") || "";
+        const match = src.match(/[?&]key=([^&]+)/);
+        if (match) return decodeURIComponent(match[1]);
+    }
+    return "";
 }
 
 // DOM Setup for Reviews
 function ensureReviewsContainer() {
-  let reviewContainer = document.getElementById("reviews");
-  if (reviewContainer) return reviewContainer;
-  const overview = document.getElementById("overview");
-  reviewContainer = document.createElement("div");
-  reviewContainer.id = "reviews";
-  reviewContainer.style.marginTop = "8px";
-  reviewContainer.className = "ui segment";
-  if (overview && overview.parentNode) {
-    overview.parentNode.insertBefore(reviewContainer, overview.nextSibling);
-  } else {
-    document.body.appendChild(reviewContainer);
-  }
-  return reviewContainer;
+    let reviewContainer = document.getElementById("reviews");
+    if (reviewContainer) return reviewContainer;
+    const overview = document.getElementById("overview");
+    reviewContainer = document.createElement("div");
+    reviewContainer.id = "reviews";
+    reviewContainer.style.marginTop = "8px";
+    reviewContainer.className = "ui segment";
+    if (overview && overview.parentNode) {
+        overview.parentNode.insertBefore(reviewContainer, overview.nextSibling);
+    } else {
+        document.body.appendChild(reviewContainer);
+    }
+    return reviewContainer;
 }
 
 // Fetch and Render Reviews
 async function renderReviews(placeId) {
-  const apiKey = getApiKey();
-  if (!apiKey || !placeId) return;
-  const container = ensureReviewsContainer();
-  container.innerHTML = "";
-  const resp = await fetch(`https://places.googleapis.com/v1/places/${placeId}?languageCode=en`, {
-    headers: {
-      "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": "id,displayName,formattedAddress,reviews.authorAttribution.displayName,reviews.authorAttribution.photoUri,reviews.rating,reviews.text.text"
+    const apiKey = getApiKey();
+    if (!apiKey || !placeId) return;
+    const container = ensureReviewsContainer();
+    container.innerHTML = "";
+    const resp = await fetch(`https://places.googleapis.com/v1/places/${placeId}?languageCode=en`, {
+        headers: {
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": "id,displayName,formattedAddress,reviews.authorAttribution.displayName,reviews.authorAttribution.photoUri,reviews.rating,reviews.text.text"
+        }
+    });
+
+    if (!resp.ok) return;
+
+    const data = await resp.json();
+    const reviews = data.reviews || [];
+    if (!reviews.length) {
+        container.innerHTML = `<div class="ui message">No reviews available.</div>`;
+        return;
     }
-  });
 
-  if (!resp.ok) return;
-
-  const data = await resp.json();
-  const reviews = data.reviews || [];
-  if (!reviews.length) {
-    container.innerHTML = `<div class="ui message">No reviews available.</div>`;
-    return;
-  }
-
-  const top = reviews.slice(0, 5);
-  const html = top.map(review => {
-    const name = review.authorAttribution?.displayName || "Reviewer";
-    const photo = review.authorAttribution?.photoUri || "";
-    const rating = review.rating ? `⭐ ${review.rating}` : "";
-    const text = review.text?.text || "";
-    const imgTag = photo ? `<img src="${photo}" referrerpolicy="no-referrer" width="32" height="32" style="border-radius:50%;object-fit:cover;margin-right:8px">` : "";
-    return `<div class="item" style="display:flex;align-items:flex-start;margin-bottom:10px">
-              ${imgTag}
-              <div>
-                <div style="font-weight:600">${name} ${rating}</div>
-                <div>${text}</div>
-              </div>
-            </div>`;
-  }).join("");
-  container.innerHTML = `<h4 class="ui header">Reviews</h4><div class="ui list">${html}</div>`;
+    const top = reviews.slice(0, 5);
+    const html = top.map(review => {
+        const name = review.authorAttribution?.displayName || "Reviewer";
+        const photo = review.authorAttribution?.photoUri || "";
+        const rating = review.rating ? `⭐ ${review.rating}` : "";
+        const text = review.text?.text || "";
+        const imgTag = photo ? `<img src="${photo}" referrerpolicy="no-referrer" width="32" height="32" style="border-radius:50%;object-fit:cover;margin-right:8px">` : "";
+        return `<div class="item" style="display:flex;align-items:flex-start;margin-bottom:10px">
+                ${imgTag}
+                <div>
+                    <div style="font-weight:600">${name} ${rating}</div>
+                    <div>${text}</div>
+                </div>
+                </div>`;
+    }).join("");
+    container.innerHTML = `<h4 class="ui header">Reviews</h4><div class="ui list">${html}</div>`;
 }
 
 // Load Place Overview and Reviews
@@ -232,20 +403,20 @@ function showAddButton() {
 
 // Map Initialization
 function initMap() {
-  if (mapInited) return;
-  mapInited = true;
+    if (mapInited) return;
+    mapInited = true;
 
-  const start = { lat: 39.9526, lng: -75.1652 };
-  map = new google.maps.Map(document.getElementById("map"), {
-    center: start,
-    zoom: 13,
-    mapId: "DEMO_MAP_ID",
-    mapTypeControl: false,
-  });
+    const start = { lat: 39.9526, lng: -75.1652 };
+    map = new google.maps.Map(document.getElementById("map"), {
+        center: start,
+        zoom: 13,
+        mapId: "DEMO_MAP_ID",
+        mapTypeControl: false,
+    });
 
-  infoWindow = new google.maps.InfoWindow();
+    infoWindow = new google.maps.InfoWindow();
 
-  const autocompleteElement = document.getElementById("autocomplete");
+    const autocompleteElement = document.getElementById("autocomplete");
     if (autocompleteElement) {
         autocompleteElement.addEventListener("gmpx-placechange", () => {
             const place = autocompleteElement.value;
@@ -262,131 +433,123 @@ function initMap() {
             }
         });
     }
-  doNearbySearch();
+    doNearbySearch();
 }
 
 window.initMap = initMap;
 
 // Add or Move Marker
 function addOrMoveMarker(position, title = "Selected") {
-  if (marker) {
-    marker.setPosition(position);
-  } else {
-    marker = new google.maps.Marker({
-      position,
-      map,
-      title
-    });
-  }
+    if (marker) {
+        marker.setPosition(position);
+    } else {
+        marker = new google.maps.Marker({
+        position,
+        map,
+        title
+        });
+    }
 }
 
 // Search Nearby Restaurants/Cafes
 async function doNearbySearch() {
-  const center = map.getCenter();
-  if (!center) return;
-  const apiKey = getApiKey();
-  if (!apiKey) return;
+    const center = map.getCenter();
+    if (!center) return;
+    const apiKey = getApiKey();
+    if (!apiKey) return;
 
-  clearResultMarkers();
+    clearResultMarkers();
 
-  const body = {
-    includedTypes: ["restaurant", "cafe", "bar"],
-    maxResultCount: 20,
-    rankPreference: "DISTANCE",
-    locationRestriction: {
-      circle: {
-        center: { latitude: center.lat(), longitude: center.lng() },
-        radius: 2000
-      }
-    }
-  };
+    const body = {
+        includedTypes: ["restaurant", "cafe", "bar"],
+        maxResultCount: 20,
+        rankPreference: "DISTANCE",
+        locationRestriction: {
+        circle: {
+            center: { latitude: center.lat(), longitude: center.lng() },
+            radius: 2000
+        }
+        }
+    };
 
-  const resp = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask":
-        "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.photos.name"
-    },
-    body: JSON.stringify(body)
-  });
-
-  if (!resp.ok) return;
-  const data = await resp.json();
-  const places = data.places || [];
-
-  for (const place of places) {
-    const lat = place.location?.latitude;
-    const lng = place.location?.longitude;
-    if (lat == null || lng == null) continue;
-    const pos = { lat, lng };
-
-    if (place.id) {
-        placeById[place.id] = place;
-    }
-
-    const marker = new google.maps.Marker({
-      map,
-      position: pos,
-      title: place.displayName?.text || "Place",
+    const resp = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
+        method: "POST",
+        headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask":
+            "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.photos.name"
+        },
+        body: JSON.stringify(body)
     });
 
-      marker.addListener("click", () => {
-          const photoHTML = place.photos?.length
-              ? `<img src="https://places.googleapis.com/v1/${place.photos[0].name}/media?max_height_px=120&max_width_px=180&key=${apiKey}" 
-        style="width:100%;max-height:100px;object-fit:cover;border-radius:4px;margin-bottom:4px">`
-              : "";
-          infoWindow.setContent(
-              `<div style="max-width:220px;line-height:1.4">
-       ${photoHTML}
-       <div style="font-weight:600;font-size:14px;">${place.displayName?.text || ""}</div>
-       <div style="font-size:12px;color:#555;">${place.formattedAddress || ""}</div>
-       ${place.rating ? `<div style="margin-top:2px;font-size:12px;">⭐ ${place.rating} (${place.userRatingCount || 0})</div>` : ""}
-     </div>`
-          );
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const places = data.places || [];
 
-          infoWindow.open({ map, anchor: marker });
+    for (const place of places) {
+        const lat = place.location?.latitude;
+        const lng = place.location?.longitude;
+        if (lat == null || lng == null) continue;
+        const pos = { lat, lng };
 
-          if (place.id) {
-              placeById[place.id] = place;
-              currentPlaceForOverview = place;
-              setOverviewByPlaceId(place.id);
-          }
-      });
-    resultMarkers.push(marker);
-  }
+        if (place.id) {
+            placeById[place.id] = place;
+        }
+
+        const marker = new google.maps.Marker({
+        map,
+        position: pos,
+        title: place.displayName?.text || "Place",
+        });
+
+        marker.addListener("click", () => {
+            const photoHTML = place.photos?.length
+                ? `<img src="https://places.googleapis.com/v1/${place.photos[0].name}/media?max_height_px=120&max_width_px=180&key=${apiKey}" 
+            style="width:100%;max-height:100px;object-fit:cover;border-radius:4px;margin-bottom:4px">`
+                : "";
+            infoWindow.setContent(
+                `<div style="max-width:220px;line-height:1.4">
+        ${photoHTML}
+        <div style="font-weight:600;font-size:14px;">${place.displayName?.text || ""}</div>
+        <div style="font-size:12px;color:#555;">${place.formattedAddress || ""}</div>
+        ${place.rating ? `<div style="margin-top:2px;font-size:12px;">⭐ ${place.rating} (${place.userRatingCount || 0})</div>` : ""}
+        </div>`
+            );
+
+            infoWindow.open({ map, anchor: marker });
+
+            if (place.id) {
+                placeById[place.id] = place;
+                currentPlaceForOverview = place;
+                setOverviewByPlaceId(place.id);
+            }
+        });
+        resultMarkers.push(marker);
+    }
 }
 
 // Geolocation: Show User’s Position
 function showLocation() {
-  if (!navigator.geolocation) {
-    alert("Geolocation not supported on this browser.");
-    return;
-  }
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-      const position = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-      map.setCenter(position);
-      map.setZoom(14);
-      addOrMoveMarker(position, "You are here");
-      doNearbySearch();
-    },
-    err => {
-      console.error(err);
-      alert("Unable to get your location.");
+    if (!navigator.geolocation) {
+        alert("Geolocation not supported on this browser.");
+        return;
     }
-  );
+    navigator.geolocation.getCurrentPosition(
+        pos => {
+        const position = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        map.setCenter(position);
+        map.setZoom(14);
+        addOrMoveMarker(position, "You are here");
+        doNearbySearch();
+        },
+        err => {
+        console.error(err);
+        alert("Unable to get your location.");
+        }
+    );
 }
 
-// Tab Visibility and Event Bindings
-$(".menu .item").tab({
-  onVisible: function (tabName) {
-    if (tabName === "select" && window.google && google.maps) {
-      initMap();
-    }
-  }
-});
 
 voteButton.style.display = "none";
 message.textContent = "No restaurants added. Add some to vote!";
@@ -439,12 +602,12 @@ function addRestaurantToVotingList(restaurantId, restaurantName) {
     
     // Add the restaurant to the voting form
     vote.insertAdjacentHTML("beforeend", `
-      <div class="field">
+        <div class="field">
         <div class="ui radio checkbox">
-          <input type="radio" name="choice" id="r${restaurantId}" value="${restaurantName}">
-          <label>${restaurantName}</label>
+            <input type="radio" name="choice" id="r${restaurantId}" value="${restaurantName}">
+            <label>${restaurantName}</label>
         </div>
-      </div>
+        </div>
     `);
 }
 
@@ -542,8 +705,3 @@ function showVoteNotification(userName, votedFor) {
         notification.remove();
     }, 3000);
 }
-
-window.addEventListener("DOMContentLoaded", () => {
-  const locBtn = document.getElementById("locBtn");
-  if (locBtn) locBtn.addEventListener("click", showLocation);
-});

@@ -1,6 +1,20 @@
 $('.menu .item').tab();
 $('.ui.index').form({
     fields: {
+        session_title: {
+            identifier: 'session_title',
+            rules: [{
+                type: 'notEmpty',
+                prompt: 'Please enter a session title'
+            }]
+        },
+        event_date: {
+            identifier: 'event_date',
+            rules: [{
+                type: 'notEmpty',
+                prompt: 'Please select an event date on or after the end date'
+            }]
+        },
         name: {
             identifier: 'name',
             rules: [{
@@ -15,18 +29,18 @@ $('.ui.index').form({
                 prompt: 'Please enter your email'
             }]
         },
-        phone : {
-            identifier: 'phone',
-            rules: [{
-                type: 'integer',
-                prompt: 'Please enter your phone number'
-            }]
-        },
         zip: {
             identifier: 'zip',
             rules: [{
                 type: 'integer',
                 prompt: 'Please enter your zip code'
+            }]
+        },
+        end_date: {
+            identifier: 'end_date',
+            rules: [{
+                type: 'notEmpty',
+                prompt: 'Please select an end voting date'
             }]
         }
     }
@@ -44,10 +58,12 @@ function submitForm(event) {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
+            session_title: form.session_title.value,
+            event_date: form.event_date.value,
             name: form.name.value,
             email: form.email.value,
-            phone: form.phone.value,
-            zip: form.zip.value
+            zip: form.zip.value,
+            end_date: form.end_date.value
         })
     }).then(response => {
         if (response.status === 200) {
@@ -57,8 +73,8 @@ function submitForm(event) {
         } else {
             return response.json().then(body => {
                 errorBox.textContent = "";
-                if (body.errors && Array.isArray(body.errors)) {
-                    body.errors.forEach(msg => {
+                if (body.data && Array.isArray(body.data)) {
+                    body.data.forEach(msg => {
                         let p = document.createElement("p");
                         p.textContent = msg;
                         errorBox.appendChild(p);
@@ -69,7 +85,6 @@ function submitForm(event) {
             });
         }
     }).catch(error => {
-        // Added error handling for network issues
         console.error('Error:', error);
         errorBox.textContent = "Network error. Please try again.";
         errorBox.classList.add("visible");
