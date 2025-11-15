@@ -234,12 +234,7 @@ app.get("/session/:session_id", (req, res) => {
         if (result.rows.length === 0) {
             return res.status(404).send("Session not found.");
         } else {
-            let userCookie = req.cookies[`session_${session_id}`];
-            if (userCookie) {
-                return res.sendFile(__dirname + "/public/session.html");
-            } else {
-                return res.sendFile(__dirname + "/public/session.html");
-            }
+            return res.sendFile(__dirname + "/public/session.html");
         }
     })
     .catch((error) => {
