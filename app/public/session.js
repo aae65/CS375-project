@@ -45,10 +45,10 @@ socket.on('disconnect', () => {
 });
 
 // Listen for restaurant additions from other users
-socket.on('restaurant-added', (data) => {
-    console.log('Restaurant added:', data);
-    addRestaurantToVotingList(data.id, data.name);
-    showAddNotification(data.name);
+socket.on('restaurant-added', (restaurant) => {
+    console.log('Restaurant added:', restaurant);
+    addRestaurantToVotingList(restaurant);
+    showAddNotification(restaurant.name);
 });
 
 // Listen for vote submissions from other users
@@ -84,10 +84,10 @@ fetch(`/api/session/${session_id}/user`)
 function showJoinModal() {
     sessionContent.style.display = 'none';
     loadExistingUsers();
-    
+
     $('#joinTabs .item').tab();
     $('.ui.dropdown').dropdown();
-    
+
     $(joinModal).modal({
         closable: false,
         onApprove: function() {
@@ -108,14 +108,14 @@ function loadExistingUsers() {
         defaultOption.value = '';
         defaultOption.textContent = 'Choose your name...';
         dropdown.append(defaultOption);
-        
+
         data.users.forEach(user => {
             let option = document.createElement('option');
             option.value = user.user_id;
             option.textContent = user.name;
             dropdown.append(option);
         });
-    
+
         $('.ui.dropdown').dropdown('refresh');
     })
     .catch(error => {
@@ -148,19 +148,19 @@ function showSessionContent(name) {
 
 document.getElementById('joinButton').addEventListener('click', function(e) {
     e.preventDefault();
-    
+
     let joinErrorBox = document.getElementById('joinErrorBox');
     let activeTab = document.querySelector('.tab.segment.active').getAttribute('data-tab');
-    
+
     if (activeTab === 'existing') {
         let selectedUserId = document.getElementById('existingUserSelect').value;
-        
+
         if (!selectedUserId) {
             joinErrorBox.textContent = 'Please select your name from the list';
             joinErrorBox.style.display = 'block';
             return;
         }
-        
+
         fetch(`/session/${session_id}/join`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -186,16 +186,16 @@ document.getElementById('joinButton').addEventListener('click', function(e) {
             joinErrorBox.textContent = 'Network error. Please try again.';
             joinErrorBox.style.display = 'block';
         });
-        
+
     } else {
         let newName = document.querySelector('input[name="newName"]').value;
-        
+
         if (!newName || newName.trim().length === 0) {
             joinErrorBox.textContent = 'Please enter your name';
             joinErrorBox.style.display = 'block';
             return;
         }
-        
+
         fetch(`/session/${session_id}/join`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -227,28 +227,27 @@ document.getElementById('joinButton').addEventListener('click', function(e) {
 function initializeShareFunctionality() {
     // Share modal functionality
     $(modal).modal('attach events', shareLink, 'show');
-    
+
     shareLink.addEventListener('click', () => {
         linkInput.value = window.location.href;
         $(modal).modal('show');
     });
 
 // Copy session link to clipboard
-    if (copyLink && linkInput) {
-        copyLink.addEventListener("click", () => {
-            linkInput.select();
-            linkInput.setSelectionRange(0, 99999);
-            document.execCommand("copy");
-            $(copyLink).popup("show");
-        });
-    }
-
-    $(copyLink).popup({
-        popup: linkCopied,
-        position: 'top center',
-        on: 'manual'
+if (copyLink && linkInput) {
+    copyLink.addEventListener("click", () => {
+        linkInput.select();
+        linkInput.setSelectionRange(0, 99999);
+        document.execCommand("copy");
+        $(copyLink).popup("show");
     });
 }
+
+$(copyLink).popup({
+    popup: linkCopied,
+    position: 'top center',
+    on: 'manual'
+});
 
 // Map Variables
 let map;
@@ -308,8 +307,8 @@ async function renderReviews(placeId) {
     container.innerHTML = "";
     const resp = await fetch(`https://places.googleapis.com/v1/places/${placeId}?languageCode=en`, {
         headers: {
-        "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask": "id,displayName,formattedAddress,reviews.authorAttribution.displayName,reviews.authorAttribution.photoUri,reviews.rating,reviews.text.text"
+            "X-Goog-Api-Key": apiKey,
+            "X-Goog-FieldMask": "id,displayName,formattedAddress,reviews.authorAttribution.displayName,reviews.authorAttribution.photoUri,reviews.rating,reviews.text.text"
         }
     });
 
@@ -363,6 +362,7 @@ function setOverviewByPlaceId(placeId) {
     showAddButton();
 }
 
+// Add Button for Overview
 function ensureOverviewAddButton() {
     const container = document.getElementById("add-button-container");
     if (!container) return;
@@ -392,6 +392,7 @@ function ensureOverviewAddButton() {
     }
 }
 
+// Show Add Button on Overview
 function showAddButton() {
     const button = document.getElementById("overview-add-to-vote");
     if (!button) return;
@@ -478,7 +479,7 @@ async function doNearbySearch() {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": apiKey,
         "X-Goog-FieldMask":
-            "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.photos.name"
+            "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.priceLevel,places.photos.name"
         },
         body: JSON.stringify(body)
     });
@@ -550,26 +551,39 @@ function showLocation() {
     );
 }
 
+// Tab Visibility and Event Bindings
+$(".menu .item").tab({
+    onVisible: function (tabName) {
+        if (tabName === "select" && window.google && google.maps) {
+            initMap();
+        }
+    }
+});
 
 voteButton.style.display = "none";
 message.textContent = "No restaurants added. Add some to vote!";
 testAdd.addEventListener('click', onTestAddClick);
 voteButton.addEventListener('click', onVoteClick);
 let id = 0;
-let restaurantIds = new Set(); // Track existing restaurant IDs to avoid duplicates
+let restaurantIds = new Set();
 
 function onTestAddClick(){
     message.textContent = "";
     id++;
     const restaurantName = `This is test #${id}`;
-    
+
     // Emit to WebSocket so all users get the update
     socket.emit('add-restaurant', {
         id: id,
-        name: restaurantName
+        name: restaurantName,
+        address: "",
+        rating: null,
+        userRatingCount: null,
+        priceLevel: null
     });
 }
 
+// Helper function to add place to session
 function addPlaceToSession(place) {
     if (!place || !place.id) return;
 
@@ -578,37 +592,71 @@ function addPlaceToSession(place) {
             ? place.displayName.text
             : "Unnamed place";
 
+    const restaurantData = {
+        id: place.id,
+        name: displayName,
+        address: place.formattedAddress || "",
+        rating: place.rating || null,
+        userRatingCount: place.userRatingCount || null,
+        priceLevel: place.priceLevel || null
+    }
+
     showAddNotification(displayName);
 
-    socket.emit('add-restaurant', {
-        id: place.id,
-        name: displayName
-    });
+    socket.emit('add-restaurant',restaurantData);
 }
 
 // Helper function to add restaurant to voting list
-function addRestaurantToVotingList(restaurantId, restaurantName) {
+function addRestaurantToVotingList(restaurant) {
+    const { id, name, address, rating, userRatingCount, priceLevel } = restaurant;
+
     // Avoid duplicates
-    if (restaurantIds.has(restaurantId)) {
+    if (restaurantIds.has(id)) {
         return;
     }
-    restaurantIds.add(restaurantId);
-    
+    restaurantIds.add(id);
+
     // Update message and show vote button if this is the first restaurant
     if (restaurantIds.size === 1) {
         message.textContent = "";
         voteButton.style.display = "block";
     }
-    
+
+    // Build details for display
+    const details = [];
+
+    if (rating) {
+        const ratingText = `⭐ ${rating}${userRatingCount ? ` (${userRatingCount})` : ""}`;
+        details.push(ratingText);
+    }
+
+    if (typeof priceLevel === "number") {
+        details.push("$".repeat(priceLevel + 1));
+    }
+
+    if (address) {
+        details.push(address);
+    }
+
+    const detailsHtml = details.length
+        ? `<div style="font-size: 0.85em; color: #555; margin-top: 2px;">${details.join(" • ")}</div>`
+        : "";
+
     // Add the restaurant to the voting form
-    vote.insertAdjacentHTML("beforeend", `
-        <div class="field">
+    vote.insertAdjacentHTML(
+        "beforeend",
+        `
+      <div class="field">
         <div class="ui radio checkbox">
-            <input type="radio" name="choice" id="r${restaurantId}" value="${restaurantName}">
-            <label>${restaurantName}</label>
+          <input type="radio" name="choice" id="r${id}" value="${name}">
+          <label>
+            <div><strong>${name}</strong></div>
+            ${detailsHtml}
+          </label>
         </div>
-        </div>
-    `);
+      </div>
+    `
+    );
 }
 
 
@@ -629,7 +677,7 @@ function onVoteClick() {
         for (let i = 0; i < vote.children.length; i++) {
             vote.children[i].className = "disabled field";
         }
-        
+
         // Emit vote to WebSocket
         socket.emit('submit-vote', {
             vote: selection,
@@ -686,22 +734,27 @@ function showVoteNotification(userName, votedFor) {
     notification.style.transition = 'all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
     notification.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
     notification.innerHTML = `<i class="check circle icon"></i> <strong>${userName}</strong> voted for <em>${votedFor}</em>`;
-    
+
     document.body.appendChild(notification);
-    
+
     // Slide in from the right
     setTimeout(() => {
         notification.style.right = '10px';
     }, 10);
-    
+
     // Start fade out after 2.5 seconds
     setTimeout(() => {
         notification.style.opacity = '0';
         notification.style.transform = 'translateX(20px)';
     }, 2500);
-    
+
     // Remove from DOM after animation completes
     setTimeout(() => {
         notification.remove();
     }, 3000);
 }
+
+window.addEventListener("DOMContentLoaded", () => {
+    const locBtn = document.getElementById("locBtn");
+    if (locBtn) locBtn.addEventListener("click", showLocation);
+});
