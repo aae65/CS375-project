@@ -5,16 +5,17 @@ CREATE TABLE session (
 
 CREATE TABLE session_settings (
     session_id UUID PRIMARY KEY REFERENCES session(session_id),
-    creater_user_id SERIAL,
-    username VARCHAR(50),
-    email VARCHAR(100),
-    zipcode VARCHAR(10),
-    end_date TIMESTAMP
+    session_title VARCHAR(100) NOT NULL,
+    creator_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    zipcode VARCHAR(10) NOT NULL,
+    end_date DATE NOT NULL,           
+    event_date DATE NOT NULL
 );
 
 CREATE TABLE users (
     user_id SERIAL PRIMARY KEY,
-    username VARCHAR(50)
+    name VARCHAR(50)
 );
 
 CREATE TABLE session_users (

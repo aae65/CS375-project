@@ -19,6 +19,14 @@
             <div class="column">
                 <form class="ui form" id="form" action="/generate-session">
                     <div class="field">
+                        <label>Session Title</label>
+                        <input placeholder="Session Title" name="session_title" type="text">
+                    </div>
+                    <div class="field">
+                        <label>Event Date</label>
+                        <input placeholder="Event Date" name="event_date" type="date">
+                    </div>
+                    <div class="field">
                         <label>Name</label>
                         <input placeholder="First Name" name="name" type="text">
                     </div>
@@ -27,12 +35,12 @@
                         <input placeholder="Email" name="email" type="text">
                     </div>
                     <div class="field">
-                        <label>Phone Number</label>
-                        <input placeholder="Phone Number" name="phone" type="text">
-                    </div>
-                    <div class="field">
                         <label>Zip Code</label>
                         <input placeholder="Zip Code" name="zip" type="text">
+                    </div>
+                    <div class="field">
+                        <label>End Date (Last day to vote)</label>
+                        <input placeholder="End Date" name="end_date" type="date">
                     </div>
                     <button class="ui primary button" id="submit">Submit</button>
                     <div class="ui error message" id="errorBox"></div>
