@@ -51,7 +51,6 @@ socket.on('restaurant-added', (restaurant) => {
 // Listen for vote submissions from other users
 socket.on('vote-submitted', (data) => {
     console.log('Vote submitted:', data);
-    // You can add visual feedback here, like showing who voted
     if (data.userName) {
         showVoteNotification(data.userName, data.vote);
     }
@@ -61,7 +60,9 @@ $(modal).modal("attach events", shareLink, "show");
 $(".menu.item").tab();
 
 // Display stored name
-if (document.getElementById("name")) document.getElementById("name").textContent = name;
+if (document.getElementById("name")) {
+    document.getElementById("name").textContent = name;
+}
 
 // Copy session link to clipboard
 if (copyLink && linkInput) {
@@ -89,11 +90,32 @@ let lastOverviewId = null;
 let placeById = {};
 let currentPlaceForOverview = null;
 
+// Voting globals
+let id = 0;
+let restaurantIds = new Set();
+
+// Hook into gmpx-api-loader so initMap runs when Maps JS API is ready
+(function setupMapInit() {
+    const apiLoader = document.querySelector("gmpx-api-loader");
+
+    if (apiLoader) {
+        apiLoader.addEventListener("gmpx-api-load", () => {
+            if (!mapInited) initMap();
+        });
+    } else if (window.google && google.maps && !mapInited) {
+        initMap();
+    }
+})();
+
 // Remove Old Markers
 function clearResultMarkers() {
     for (const marker of resultMarkers) {
-        if (marker.setMap) marker.setMap(null);
-        else if (marker.map) marker.map = null;
+        if (marker.setMap) {
+            marker.setMap(null);
+        }
+        if ("map" in marker) {
+            marker.map = null;
+        }
     }
     resultMarkers = [];
 }
@@ -103,6 +125,7 @@ function getApiKey() {
     const loader = document.querySelector("gmpx-api-loader");
     const apiKey = loader?.getAttribute("key");
     if (apiKey) return apiKey;
+
     const scripts = Array.from(document.scripts);
     for (const script of scripts) {
         const src = script.getAttribute("src") || "";
@@ -116,11 +139,13 @@ function getApiKey() {
 function ensureReviewsContainer() {
     let reviewContainer = document.getElementById("reviews");
     if (reviewContainer) return reviewContainer;
+
     const overview = document.getElementById("overview");
     reviewContainer = document.createElement("div");
     reviewContainer.id = "reviews";
     reviewContainer.style.marginTop = "8px";
     reviewContainer.className = "ui segment";
+
     if (overview && overview.parentNode) {
         overview.parentNode.insertBefore(reviewContainer, overview.nextSibling);
     } else {
@@ -135,6 +160,7 @@ async function renderReviews(placeId) {
     if (!apiKey || !placeId) return;
     const container = ensureReviewsContainer();
     container.innerHTML = "";
+
     const resp = await fetch(`https://places.googleapis.com/v1/places/${placeId}?languageCode=en`, {
         headers: {
             "X-Goog-Api-Key": apiKey,
@@ -157,7 +183,9 @@ async function renderReviews(placeId) {
         const photo = review.authorAttribution?.photoUri || "";
         const rating = review.rating ? `⭐ ${review.rating}` : "";
         const text = review.text?.text || "";
-        const imgTag = photo ? `<img src="${photo}" referrerpolicy="no-referrer" width="32" height="32" style="border-radius:50%;object-fit:cover;margin-right:8px">` : "";
+        const imgTag = photo
+            ? `<img src="${photo}" referrerpolicy="no-referrer" width="32" height="32" style="border-radius:50%;object-fit:cover;margin-right:8px">`
+            : "";
         return `<div class="item" style="display:flex;align-items:flex-start;margin-bottom:10px">
               ${imgTag}
               <div>
@@ -172,22 +200,22 @@ async function renderReviews(placeId) {
 // Load Place Overview and Reviews
 function setOverviewByPlaceId(placeId) {
     const overviewEl = document.getElementById("overview");
-    const PlaceCtor = google?.maps?.places?.Place;
-    const supports = !!PlaceCtor?.prototype?.isOpen;
-    if (!overviewEl || !PlaceCtor || !supports) return;
-    if (placeId && placeId === lastOverviewId) return;
+    if (!overviewEl || !placeId) return;
+    if (placeId === lastOverviewId) return;
 
     lastOverviewId = placeId;
-    overviewEl.place = new PlaceCtor({ id: placeId });
+    overviewEl.setAttribute("place", placeId);
+
+    // Load reviews via Places API v1
     renderReviews(placeId);
 
+    // Track the current place locally for "Add to voting" button
     if (placeById[placeId]) {
         currentPlaceForOverview = placeById[placeId];
+    } else {
+        currentPlaceForOverview = {id: placeId};
     }
 
-    else {
-        currentPlaceForOverview = { id: placeId };
-    }
     ensureOverviewAddButton();
     showAddButton();
 }
@@ -237,7 +265,7 @@ function initMap() {
     if (mapInited) return;
     mapInited = true;
 
-    const start = { lat: 39.9526, lng: -75.1652 };
+    const start = {lat: 39.9526, lng: -75.1652};
     map = new google.maps.Map(document.getElementById("map"), {
         center: start,
         zoom: 13,
@@ -269,15 +297,16 @@ function initMap() {
 
 window.initMap = initMap;
 
-// Add or Move Marker
+// Add or Move Marker (AdvancedMarkerElement)
 function addOrMoveMarker(position, title = "Selected") {
     if (marker) {
-        marker.setPosition(position);
+        marker.position = position;
+        marker.title = title;
     } else {
-        marker = new google.maps.Marker({
-            position,
+        marker = new google.maps.marker.AdvancedMarkerElement({
             map,
-            title
+            position,
+            title,
         });
     }
 }
@@ -297,7 +326,7 @@ async function doNearbySearch() {
         rankPreference: "DISTANCE",
         locationRestriction: {
             circle: {
-                center: { latitude: center.lat(), longitude: center.lng() },
+                center: {latitude: center.lat(), longitude: center.lng()},
                 radius: 2000
             }
         }
@@ -322,13 +351,13 @@ async function doNearbySearch() {
         const lat = place.location?.latitude;
         const lng = place.location?.longitude;
         if (lat == null || lng == null) continue;
-        const pos = { lat, lng };
+        const pos = {lat, lng};
 
         if (place.id) {
             placeById[place.id] = place;
         }
 
-        const marker = new google.maps.Marker({
+        const marker = new google.maps.marker.AdvancedMarkerElement({
             map,
             position: pos,
             title: place.displayName?.text || "Place",
@@ -347,8 +376,7 @@ async function doNearbySearch() {
        ${place.rating ? `<div style="margin-top:2px;font-size:12px;">⭐ ${place.rating} (${place.userRatingCount || 0})</div>` : ""}
      </div>`
             );
-
-            infoWindow.open({ map, anchor: marker });
+            infoWindow.open({map, anchor: marker});
 
             if (place.id) {
                 placeById[place.id] = place;
@@ -356,6 +384,7 @@ async function doNearbySearch() {
                 setOverviewByPlaceId(place.id);
             }
         });
+
         resultMarkers.push(marker);
     }
 }
@@ -368,7 +397,7 @@ function showLocation() {
     }
     navigator.geolocation.getCurrentPosition(
         pos => {
-            const position = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            const position = {lat: pos.coords.latitude, lng: pos.coords.longitude};
             map.setCenter(position);
             map.setZoom(14);
             addOrMoveMarker(position, "You are here");
@@ -390,19 +419,19 @@ $(".menu .item").tab({
     }
 });
 
+// Initial voting UI state
 voteButton.style.display = "none";
 message.textContent = "No restaurants added. Add some to vote!";
+
+// Event listeners for add/vote
 testAdd.addEventListener('click', onTestAddClick);
 voteButton.addEventListener('click', onVoteClick);
-let id = 0;
-let restaurantIds = new Set();
 
-function onTestAddClick(){
+function onTestAddClick() {
     message.textContent = "";
     id++;
     const restaurantName = `This is test #${id}`;
 
-    // Emit to WebSocket so all users get the update
     socket.emit('add-restaurant', {
         id: id,
         name: restaurantName,
@@ -429,16 +458,15 @@ function addPlaceToSession(place) {
         rating: place.rating || null,
         userRatingCount: place.userRatingCount || null,
         priceLevel: place.priceLevel || null
-    }
+    };
 
     showAddNotification(displayName);
-
-    socket.emit('add-restaurant',restaurantData);
+    socket.emit('add-restaurant', restaurantData);
 }
 
 // Helper function to add restaurant to voting list
 function addRestaurantToVotingList(restaurant) {
-    const { id, name, address, rating, userRatingCount, priceLevel } = restaurant;
+    const {id, name, address, rating, userRatingCount, priceLevel} = restaurant;
 
     // Avoid duplicates
     if (restaurantIds.has(id)) {
@@ -452,7 +480,6 @@ function addRestaurantToVotingList(restaurant) {
         voteButton.style.display = "block";
     }
 
-    // Build details for display
     const details = [];
 
     if (rating) {
@@ -472,7 +499,6 @@ function addRestaurantToVotingList(restaurant) {
         ? `<div style="font-size: 0.85em; color: #555; margin-top: 2px;">${details.join(" • ")}</div>`
         : "";
 
-    // Add the restaurant to the voting form
     vote.insertAdjacentHTML(
         "beforeend",
         `
@@ -488,7 +514,6 @@ function addRestaurantToVotingList(restaurant) {
     `
     );
 }
-
 
 function onVoteClick() {
     let choices = document.getElementsByName("choice");
@@ -508,7 +533,6 @@ function onVoteClick() {
             vote.children[i].className = "disabled field";
         }
 
-        // Emit vote to WebSocket
         socket.emit('submit-vote', {
             vote: selection,
             userName: name || 'Anonymous'
@@ -516,7 +540,7 @@ function onVoteClick() {
     }
 }
 
-// Helper function to show restraunts added to vote notification
+// Helper function to show restaurants added-to-vote notification
 function showAddNotification(restaurantName) {
     const notification = document.createElement('div');
     notification.className = 'ui info message';
@@ -532,32 +556,27 @@ function showAddNotification(restaurantName) {
 
     document.body.appendChild(notification);
 
-    // Slide in from the right
     setTimeout(() => {
         notification.style.right = '10px';
     }, 10);
 
-    // Fade out after 2.5 seconds
     setTimeout(() => {
         notification.style.opacity = '0';
         notification.style.transform = 'translateX(20px)';
     }, 2500);
 
-    // Remove from DOM after animation completes
     setTimeout(() => {
         notification.remove();
     }, 3000);
 }
 
-
 // Helper function to show vote notifications
 function showVoteNotification(userName, votedFor) {
-    // Create a temporary notification
     const notification = document.createElement('div');
     notification.className = 'ui positive message';
     notification.style.position = 'fixed';
     notification.style.top = '60px';
-    notification.style.right = '-300px'; // Start off-screen to the right
+    notification.style.right = '-300px';
     notification.style.zIndex = '1001';
     notification.style.minWidth = '250px';
     notification.style.maxWidth = '350px';
@@ -567,18 +586,15 @@ function showVoteNotification(userName, votedFor) {
 
     document.body.appendChild(notification);
 
-    // Slide in from the right
     setTimeout(() => {
         notification.style.right = '10px';
     }, 10);
 
-    // Start fade out after 2.5 seconds
     setTimeout(() => {
         notification.style.opacity = '0';
         notification.style.transform = 'translateX(20px)';
     }, 2500);
 
-    // Remove from DOM after animation completes
     setTimeout(() => {
         notification.remove();
     }, 3000);
