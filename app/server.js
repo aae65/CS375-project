@@ -305,6 +305,53 @@ io.on('connection', (socket) => {
     });
 });
 
+app.post("/vote", async (req, res) => {
+    const { session_id, user_id, selection } = req.body;
+
+    try {
+        await pool.query(`
+            UPDATE users
+            SET "votedFor" = $1
+            WHERE user_id = $2 AND session_id = $3
+        `, [selection, user_id, session_id]);
+
+        const result = await pool.query(`
+            SELECT COUNT(*) AS total,
+                   COUNT("votedFor") AS voted
+            FROM users
+            WHERE session_id = $1
+        `, [session_id]);
+
+        const total = parseInt(result.rows[0].total);
+        const voted = parseInt(result.rows[0].voted);
+
+        let winner = null;
+
+        if (total === voted) {
+            const voteResult = await pool.query(`
+                SELECT "votedFor", COUNT(*) AS count
+                FROM users
+                WHERE session_id = $1
+                GROUP BY "votedFor"
+                ORDER BY count DESC
+                LIMIT 1
+            `, [session_id]);
+
+            winner = voteResult.rows[0].votedFor;
+        }
+
+        res.json({
+            success: true,
+            allVoted: total === voted,
+            winner
+        });
+
+    } catch (err) {
+        console.error("Error updating vote:", err);
+        res.status(500).json({ success: false });
+    }
+});
+
 server.listen(3000, "0.0.0.0", () => {
     console.log("Server running at http://localhost:3000");
 });

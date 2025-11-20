@@ -8,6 +8,7 @@ let vote = document.getElementById("vote");
 let testAdd = document.getElementById("test-add");
 let voteButton = document.getElementById("vote-button");
 let message = document.getElementById("message");
+let results = document.getElementById("results");
 
 // Socket.IO connection
 const socket = io();
@@ -537,6 +538,26 @@ function onVoteClick() {
             vote: selection,
             userName: name || 'Anonymous'
         });
+
+        fetch("/vote", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                session_id: sessionId,
+                user_id: userId,
+                selection
+            })
+        })
+            .then(res => res.json())
+            .then(data => {
+                voteButton.classList.add("disabled");
+                message.textContent = `You voted for ${selection}`;
+
+                if (data.allVoted && data.winner) {
+                    results.textContent = `The winner is: ${data.winner}`;
+                }
+            })
+            .catch(err => console.error(err));
     }
 }
 

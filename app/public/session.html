@@ -46,15 +46,15 @@
     <base href="/">
 </head>
 <body>
-<gmpx-api-loader key="YOUR_API_KEY" libraries="places,marker"></gmpx-api-loader>
+    <gmpx-api-loader key="YOUR_API_KEY" libraries="places,marker"></gmpx-api-loader>
 
-<!-- User counter -->
-<div style="position: fixed; top: 10px; right: 10px; z-index: 1000;">
-    <div class="ui green label">
-        <i class="users icon"></i>
-        <span id="user-count">1</span> user(s) online
+    <!-- User counter -->
+    <div style="position: fixed; top: 10px; right: 10px; z-index: 1000;">
+        <div class="ui green label">
+            <i class="users icon"></i>
+            <span id="user-count">1</span> user(s) online
+        </div>
     </div>
-</div>
 
     <div class="ui modal" id="joinModal">
         <div class="header">Join Restaurant Voting Session</div>
@@ -93,105 +93,105 @@
 
     <div id="sessionContent" style="display: none;">
         <div class="ui secondary pointing menu" style="padding: 1px">
-                <a class="item active" data-tab="group">Your Group</a>
+            <a class="item active" data-tab="group">Your Group</a>
         </div>
         <a class="item" data-tab="select">Choose Restaurants</a>
         <a class="item" data-tab="vote">Vote</a>
         <a class="item" data-tab="results">Results</a>
     </div>
 
-<div class="ui bottom attached tab segment" data-tab="group">
-    <h1>Hello <span id="name"></span></h1>
-    <div class="ui stackable one column grid">
-        <div class="column">
-            <div class="ui raised segment">
-                <div class="ui placeholder">
-                    <div class="image header">
-                        <div class="line"></div>
-                        <div class="line"></div>
+    <div class="ui bottom attached tab segment" data-tab="group">
+        <h1>Hello <span id="name"></span></h1>
+        <div class="ui stackable one column grid">
+            <div class="column">
+                <div class="ui raised segment">
+                    <div class="ui placeholder">
+                        <div class="image header">
+                            <div class="line"></div>
+                            <div class="line"></div>
+                        </div>
+                        <div class="paragraph">
+                            <div class="medium line"></div>
+                            <div class="short line"></div>
+                        </div>
                     </div>
-                    <div class="paragraph">
-                        <div class="medium line"></div>
-                        <div class="short line"></div>
+                </div>
+            </div>
+            <div class="column">
+                <div class="ui raised segment">
+                    <div class="ui placeholder">
+                        <div class="image header">
+                            <div class="line"></div>
+                            <div class="line"></div>
+                        </div>
+                        <div class="paragraph">
+                            <div class="medium line"></div>
+                            <div class="short line"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="column">
+                <div class="ui raised segment">
+                    <div class="ui placeholder">
+                        <div class="image header">
+                            <div class="line"></div>
+                            <div class="line"></div>
+                        </div>
+                        <div class="paragraph">
+                            <div class="medium line"></div>
+                            <div class="short line"></div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="column">
-            <div class="ui raised segment">
-                <div class="ui placeholder">
-                    <div class="image header">
-                        <div class="line"></div>
-                        <div class="line"></div>
-                    </div>
-                    <div class="paragraph">
-                        <div class="medium line"></div>
-                        <div class="short line"></div>
-                    </div>
-                </div>
+        <br>
+        <button class="ui labeled icon button" id="generate">
+            <i class="linkify icon"></i>
+            Want to add more people? Share this link with them!
+        </button>
+        <div class="ui modal" id="modal">
+            <div class="center aligned header">
+                Note: anyone with this link can join the session
             </div>
-        </div>
-        <div class="column">
-            <div class="ui raised segment">
-                <div class="ui placeholder">
-                    <div class="image header">
-                        <div class="line"></div>
-                        <div class="line"></div>
-                    </div>
-                    <div class="paragraph">
-                        <div class="medium line"></div>
-                        <div class="short line"></div>
+            <div class="center aligned content">
+                <div class="ui fluid action input">
+                    <input readonly type="text" value="placeholder">
+                    <button class="ui teal right labeled icon button" id="copyLink">
+                        <i class="copy icon"></i>
+                        Copy
+                    </button>
+                    <div class="ui custom popup transition hidden" id="link-copied">
+                        Link copied!
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <br>
-    <button class="ui labeled icon button" id="generate">
-        <i class="linkify icon"></i>
-        Want to add more people? Share this link with them!
-    </button>
-    <div class="ui modal" id="modal">
-        <div class="center aligned header">
-            Note: anyone with this link can join the session
-        </div>
-        <div class="center aligned content">
-            <div class="ui fluid action input">
-                <input readonly type="text" value="placeholder">
-                <button class="ui teal right labeled icon button" id="copyLink">
-                    <i class="copy icon"></i>
-                    Copy
-                </button>
-                <div class="ui custom popup transition hidden" id="link-copied">
-                    Link copied!
-                </div>
+
+    <div class="ui bottom attached tab segment" data-tab="select">
+        <button class="ui teal button" id="locBtn">Use My Location</button>
+        <button class="ui button" id="test-add">This is a button that adds a div</button>
+
+        <div class="ui form" style="margin-top:8px">
+            <div class="field">
+                <gmpx-place-autocomplete
+                        country="us"
+                        id="autocomplete"
+                        placeholder="Find restaurants, cafés, etc.">
+                </gmpx-place-autocomplete>
             </div>
         </div>
-    </div>
-</div>
 
-<div class="ui bottom attached tab segment" data-tab="select">
-    <button class="ui teal button" id="locBtn">Use My Location</button>
-    <button class="ui button" id="test-add">This is a button that adds a div</button>
-
-    <div class="ui form" style="margin-top:8px">
-        <div class="field">
-            <gmpx-place-autocomplete
-                    country="us"
-                    id="autocomplete"
-                    placeholder="Find restaurants, cafés, etc.">
-            </gmpx-place-autocomplete>
+        <div class="map-container">
+            <div id="map"></div>
         </div>
+
+        <div id="add-button-container"></div>
+
+        <gmpx-place-overview id="overview"></gmpx-place-overview>
     </div>
-
-    <div class="map-container">
-        <div id="map"></div>
-    </div>
-
-    <div id="add-button-container"></div>
-
-    <gmpx-place-overview id="overview"></gmpx-place-overview>
-</div>
 
     <div class="ui bottom attached tab segment" data-tab="vote">
         <div class="ui form" id="vote"></div>
@@ -201,7 +201,7 @@
 
     <div class="ui bottom attached tab segment" data-tab="results">
         <h1>The winner is:</h1>
-        Nothing yet, make sure everyone has voted!
+        <div id="results">Nothing yet, make sure everyone has voted!</div>
     </div>
 </body>
 <script src="session.js"></script>
