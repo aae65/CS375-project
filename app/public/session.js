@@ -25,6 +25,14 @@ if (sessionId) {
     socket.emit('join-session', sessionId);
 }
 
+// Listen for existing restaurants when joining
+socket.on('existing-restaurants', (restaurants) => {
+    console.log('Loading existing restaurants:', restaurants);
+    restaurants.forEach(restaurant => {
+        addRestaurantToVotingList(restaurant);
+    });
+});
+
 // Update user count when it changes
 socket.on('user-count', (count) => {
     const userCountElement = document.getElementById('user-count');

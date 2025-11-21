@@ -91,16 +91,15 @@
         </div>
     </div>
 
-    <div id="sessionContent" style="display: none;">
+    <div id="sessionContent">
         <div class="ui secondary pointing menu" style="padding: 1px">
             <a class="item active" data-tab="group">Your Group</a>
+            <a class="item" data-tab="select">Choose Restaurants</a>
+            <a class="item" data-tab="vote">Vote</a>
+            <a class="item" data-tab="results">Results</a>
         </div>
-        <a class="item" data-tab="select">Choose Restaurants</a>
-        <a class="item" data-tab="vote">Vote</a>
-        <a class="item" data-tab="results">Results</a>
-    </div>
 
-    <div class="ui bottom attached tab segment" data-tab="group">
+    <div class="ui bottom attached tab segment active" data-tab="group">
         <h1>Hello <span id="name"></span></h1>
         <div class="ui stackable one column grid">
             <div class="column">
