@@ -1,14 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <title>Session</title>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-    <link rel="stylesheet" href="/semantic/dist/semantic.min.css">
+    <link href="/semantic/dist/semantic.min.css" rel="stylesheet">
     <script src="/semantic/dist/semantic.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
-    <script defer
-            src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap&libraries=places,marker&v=beta">
-    </script>
-    <script type="module" src="https://unpkg.com/@googlemaps/extended-component-library@0.6"></script>
+    <script src="https://unpkg.com/@googlemaps/extended-component-library@0.6" type="module"></script>
 
     <style>
         html, body {
@@ -43,11 +42,11 @@
             --gmpx-color-surface: #fff;
         }
     </style>
-    <title>Session</title>
+
     <base href="/">
 </head>
 <body>
-    <gmpx-api-loader key="YOUR_API_KEY"></gmpx-api-loader>
+    <gmpx-api-loader key="YOUR_API_KEY" libraries="places,marker"></gmpx-api-loader>
 
     <!-- User counter -->
     <div style="position: fixed; top: 10px; right: 10px; z-index: 1000;">
@@ -174,9 +173,9 @@
             <div class="ui form" style="margin-top:8px">
                 <div class="field">
                     <gmpx-place-autocomplete
-                            id="autocomplete"
-                            placeholder="Find restaurants, cafés, etc."
-                            country="us">
+                        country="us"
+                        id="autocomplete"
+                        placeholder="Find restaurants, cafés, etc.">
                     </gmpx-place-autocomplete>
                 </div>
             </div>
