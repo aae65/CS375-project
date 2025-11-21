@@ -251,6 +251,9 @@ app.get("/session/:session_id", (req, res) => {
     });
 });
 
+// In-memory storage for session restaurants
+const sessionRestaurants = new Map();
+
 // Socket.IO connection handling
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
@@ -267,6 +270,12 @@ io.on('connection', (socket) => {
         // Tell everyone in the session about the new user count
         io.to(`session-${sessionId}`).emit('user-count', userCount);
         
+        // Send existing restaurants to the newly joined user
+        const existingRestaurants = sessionRestaurants.get(sessionId) || [];
+        if (existingRestaurants.length > 0) {
+            socket.emit('existing-restaurants', existingRestaurants);
+        }
+        
         console.log(`User ${socket.id} joined session ${sessionId}. Total users: ${userCount}`);
     });
 
@@ -274,6 +283,18 @@ io.on('connection', (socket) => {
     socket.on('add-restaurant', (data) => {
         if (socket.sessionId) {
             console.log(`Restaurant added to session ${socket.sessionId}:`, data);
+            
+            // Store restaurant in memory
+            if (!sessionRestaurants.has(socket.sessionId)) {
+                sessionRestaurants.set(socket.sessionId, []);
+            }
+            const restaurants = sessionRestaurants.get(socket.sessionId);
+            
+            // Avoid duplicates
+            if (!restaurants.some(r => r.id === data.id)) {
+                restaurants.push(data);
+            }
+            
             // Broadcast to all users in the session (including sender)
             io.to(`session-${socket.sessionId}`).emit('restaurant-added', data);
         }
@@ -303,6 +324,53 @@ io.on('connection', (socket) => {
         }
         console.log('User disconnected:', socket.id);
     });
+});
+
+app.post("/vote", async (req, res) => {
+    const { session_id, user_id, selection } = req.body;
+
+    try {
+        await pool.query(`
+            UPDATE users
+            SET "votedFor" = $1
+            WHERE user_id = $2 AND session_id = $3
+        `, [selection, user_id, session_id]);
+
+        const result = await pool.query(`
+            SELECT COUNT(*) AS total,
+                   COUNT("votedFor") AS voted
+            FROM users
+            WHERE session_id = $1
+        `, [session_id]);
+
+        const total = parseInt(result.rows[0].total);
+        const voted = parseInt(result.rows[0].voted);
+
+        let winner = null;
+
+        if (total === voted) {
+            const voteResult = await pool.query(`
+                SELECT "votedFor", COUNT(*) AS count
+                FROM users
+                WHERE session_id = $1
+                GROUP BY "votedFor"
+                ORDER BY count DESC
+                LIMIT 1
+            `, [session_id]);
+
+            winner = voteResult.rows[0].votedFor;
+        }
+
+        res.json({
+            success: true,
+            allVoted: total === voted,
+            winner
+        });
+
+    } catch (err) {
+        console.error("Error updating vote:", err);
+        res.status(500).json({ success: false });
+    }
 });
 
 server.listen(3000, "0.0.0.0", () => {
