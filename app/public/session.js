@@ -59,18 +59,132 @@ socket.on('vote-submitted', (data) => {
 $(modal).modal("attach events", shareLink, "show");
 $(".menu.item").tab();
 
-// Display stored name
-if (document.getElementById("name")) {
-    document.getElementById("name").textContent = name;
+function showSessionContent(name) {
+    if (document.getElementById("name")) {
+        document.getElementById("name").textContent = name;
+    }   
+    sessionContent.style.display = 'block';
+    $(joinModal).modal('hide');
+
+    initializeShareFunctionality();
+
+    let locBtn = document.getElementById('locBtn');
+    if (locBtn) locBtn.addEventListener('click', showLocation);
+
+    $('.menu .item').tab({
+        onVisible: function (tabName) {
+            // Tab Visibility and Event Bindings
+            if (tabName === 'select' || tabName === 'vote') {
+                if (!map) {
+                    initMap();
+                }
+                setTimeout(() => map && map.invalidateSize(), 100);
+            }
+        }
+    });
 }
 
-// Copy session link to clipboard
-if (copyLink && linkInput) {
-    copyLink.addEventListener("click", () => {
-        linkInput.select();
-        linkInput.setSelectionRange(0, 99999);
-        document.execCommand("copy");
-        $(copyLink).popup("show");
+document.getElementById('joinButton').addEventListener('click', function(e) {
+    e.preventDefault();
+    
+    let joinErrorBox = document.getElementById('joinErrorBox');
+    let activeTab = document.querySelector('.tab.segment.active').getAttribute('data-tab');
+    
+    if (activeTab === 'existing') {
+        let selectedUserId = document.getElementById('existingUserSelect').value;
+        
+        if (!selectedUserId) {
+            joinErrorBox.textContent = 'Please select your name from the list';
+            joinErrorBox.style.display = 'block';
+            return;
+        }
+        
+        fetch(`/session/${session_id}/join`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                isExistingUser: true,
+                existingUserId: selectedUserId
+            })
+        })
+        .then(response => {
+            if (response.status === 200) {
+                return response.json().then(data => {
+                    showSessionContent(data.name);
+                });
+            } else {
+                return response.json().then(data => {
+                    joinErrorBox.textContent = data.error || 'Error selecting user';
+                    joinErrorBox.style.display = 'block';
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            joinErrorBox.textContent = 'Network error. Please try again.';
+            joinErrorBox.style.display = 'block';
+        });
+        
+    } else {
+        let newName = document.querySelector('input[name="newName"]').value;
+        
+        if (!newName || newName.trim().length === 0) {
+            joinErrorBox.textContent = 'Please enter your name';
+            joinErrorBox.style.display = 'block';
+            return;
+        }
+        
+        fetch(`/session/${session_id}/join`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                isExistingUser: false,
+                name: newName
+            })
+        })
+        .then(response => {
+            if (response.status === 200) {
+                return response.json().then(data => {
+                    showSessionContent(data.name);
+                });
+            } else {
+                return response.json().then(data => {
+                    joinErrorBox.textContent = data.error || 'Error joining session';
+                    joinErrorBox.style.display = 'block';
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            joinErrorBox.textContent = 'Network error. Please try again.';
+            joinErrorBox.style.display = 'block';
+        });
+    }
+});
+
+function initializeShareFunctionality() {
+    // Share modal functionality
+    $(modal).modal('attach events', shareLink, 'show');
+    
+    shareLink.addEventListener('click', () => {
+        linkInput.value = window.location.href;
+        $(modal).modal('show');
+    });
+
+    // Copy session link to clipboard
+    if (copyLink && linkInput) {
+        copyLink.addEventListener("click", () => {
+            linkInput.select();
+            linkInput.setSelectionRange(0, 99999);
+            document.execCommand("copy");
+            $(copyLink).popup("show");
+        });
+    }
+
+    $(copyLink).popup({
+        popup: linkCopied,
+        position: 'top center',
+        on: 'manual'
     });
 }
 
@@ -187,12 +301,12 @@ async function renderReviews(placeId) {
             ? `<img src="${photo}" referrerpolicy="no-referrer" width="32" height="32" style="border-radius:50%;object-fit:cover;margin-right:8px">`
             : "";
         return `<div class="item" style="display:flex;align-items:flex-start;margin-bottom:10px">
-              ${imgTag}
-              <div>
-                <div style="font-weight:600">${name} ${rating}</div>
-                <div>${text}</div>
-              </div>
-            </div>`;
+                    ${imgTag}
+                    <div>
+                        <div style="font-weight:600">${name} ${rating}</div>
+                        <div>${text}</div>
+                    </div>
+                </div>`;
     }).join("");
     container.innerHTML = `<h4 class="ui header">Reviews</h4><div class="ui list">${html}</div>`;
 }
@@ -213,9 +327,8 @@ function setOverviewByPlaceId(placeId) {
     if (placeById[placeId]) {
         currentPlaceForOverview = placeById[placeId];
     } else {
-        currentPlaceForOverview = {id: placeId};
+        currentPlaceForOverview = { id: placeId };
     }
-
     ensureOverviewAddButton();
     showAddButton();
 }
@@ -366,7 +479,7 @@ async function doNearbySearch() {
         marker.addListener("click", () => {
             const photoHTML = place.photos?.length
                 ? `<img src="https://places.googleapis.com/v1/${place.photos[0].name}/media?max_height_px=120&max_width_px=180&key=${apiKey}" 
-        style="width:100%;max-height:100px;object-fit:cover;border-radius:4px;margin-bottom:4px">`
+                style="width:100%;max-height:100px;object-fit:cover;border-radius:4px;margin-bottom:4px">`
                 : "";
             infoWindow.setContent(
                 `<div style="max-width:220px;line-height:1.4">
@@ -376,7 +489,7 @@ async function doNearbySearch() {
        ${place.rating ? `<div style="margin-top:2px;font-size:12px;">⭐ ${place.rating} (${place.userRatingCount || 0})</div>` : ""}
      </div>`
             );
-            infoWindow.open({map, anchor: marker});
+            infoWindow.open({ map, anchor: marker });
 
             if (place.id) {
                 placeById[place.id] = place;
@@ -467,19 +580,18 @@ function addPlaceToSession(place) {
 // Helper function to add restaurant to voting list
 function addRestaurantToVotingList(restaurant) {
     const {id, name, address, rating, userRatingCount, priceLevel} = restaurant;
-
     // Avoid duplicates
     if (restaurantIds.has(id)) {
         return;
     }
     restaurantIds.add(id);
-
+    
     // Update message and show vote button if this is the first restaurant
     if (restaurantIds.size === 1) {
         message.textContent = "";
         voteButton.style.display = "block";
     }
-
+    
     const details = [];
 
     if (rating) {
@@ -502,15 +614,15 @@ function addRestaurantToVotingList(restaurant) {
     vote.insertAdjacentHTML(
         "beforeend",
         `
-      <div class="field">
+        <div class="field">
         <div class="ui radio checkbox">
-          <input type="radio" name="choice" id="r${id}" value="${name}">
-          <label>
-            <div><strong>${name}</strong></div>
-            ${detailsHtml}
-          </label>
+            <input type="radio" name="choice" id="r${id}" value="${name}">
+            <label>
+                <div><strong>${name}</strong></div>
+                ${detailsHtml}
+            </label>
         </div>
-      </div>
+    </div>
     `
     );
 }
@@ -576,7 +688,7 @@ function showVoteNotification(userName, votedFor) {
     notification.className = 'ui positive message';
     notification.style.position = 'fixed';
     notification.style.top = '60px';
-    notification.style.right = '-300px';
+    notification.style.right = '-300px'; 
     notification.style.zIndex = '1001';
     notification.style.minWidth = '250px';
     notification.style.maxWidth = '350px';
@@ -585,7 +697,7 @@ function showVoteNotification(userName, votedFor) {
     notification.innerHTML = `<i class="check circle icon"></i> <strong>${userName}</strong> voted for <em>${votedFor}</em>`;
 
     document.body.appendChild(notification);
-
+    
     setTimeout(() => {
         notification.style.right = '10px';
     }, 10);
@@ -594,7 +706,7 @@ function showVoteNotification(userName, votedFor) {
         notification.style.opacity = '0';
         notification.style.transform = 'translateX(20px)';
     }, 2500);
-
+    
     setTimeout(() => {
         notification.remove();
     }, 3000);
