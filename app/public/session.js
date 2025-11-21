@@ -8,9 +8,6 @@ let vote = document.getElementById("vote");
 let testAdd = document.getElementById("test-add");
 let voteButton = document.getElementById("vote-button");
 let message = document.getElementById("message");
-let session_id = window.location.pathname.split('/')[2];
-let joinModal = document.getElementById('joinModal');
-let sessionContent = document.getElementById('sessionContent');
 
 // Socket.IO connection
 const socket = io();
@@ -59,68 +56,8 @@ socket.on('vote-submitted', (data) => {
     }
 });
 
-// Display stored name
-let storedName = sessionStorage.getItem("name");
-let nameElement = document.getElementById("name");
-if (storedName && nameElement) {
-    nameElement.textContent = storedName;
-}
-
-// Check if user is already in session via cookie
-fetch(`/api/session/${session_id}/user`)
-.then(response => response.json())
-.then(data => {
-    if (data.name) {
-        showSessionContent(data.name);
-    } else {
-        showJoinModal();
-    }
-}).catch(error => {
-    console.error('Error fetching user:', error);
-    showJoinModal();
-});
-
-function showJoinModal() {
-    sessionContent.style.display = 'none';
-    loadExistingUsers();
-    
-    $('#joinTabs .item').tab();
-    $('.ui.dropdown').dropdown();
-    
-    $(joinModal).modal({
-        closable: false,
-        onApprove: function() {
-            return false;
-        }
-    }).modal('show');
-}
-
-function loadExistingUsers() {
-    fetch(`/api/session/${session_id}/users`)
-    .then(response => response.json())
-    .then(data => {
-        let dropdown = document.getElementById('existingUserSelect');
-
-        dropdown.textContent = '';
-
-        let defaultOption = document.createElement('option');
-        defaultOption.value = '';
-        defaultOption.textContent = 'Choose your name...';
-        dropdown.append(defaultOption);
-        
-        data.users.forEach(user => {
-            let option = document.createElement('option');
-            option.value = user.user_id;
-            option.textContent = user.name;
-            dropdown.append(option);
-        });
-    
-        $('.ui.dropdown').dropdown('refresh');
-    })
-    .catch(error => {
-        console.error('Error loading users:', error);
-    });
-}
+$(modal).modal("attach events", shareLink, "show");
+$(".menu.item").tab();
 
 function showSessionContent(name) {
     if (document.getElementById("name")) {
@@ -251,6 +188,12 @@ function initializeShareFunctionality() {
     });
 }
 
+$(copyLink).popup({
+    popup: linkCopied,
+    position: 'top center',
+    on: 'manual'
+});
+
 // Map Variables
 let map;
 let mapInited = false;
@@ -380,6 +323,7 @@ function setOverviewByPlaceId(placeId) {
     // Load reviews via Places API v1
     renderReviews(placeId);
 
+    // Track the current place locally for "Add to voting" button
     if (placeById[placeId]) {
         currentPlaceForOverview = placeById[placeId];
     } else {
@@ -419,6 +363,7 @@ function ensureOverviewAddButton() {
     }
 }
 
+// Show Add Button on Overview
 function showAddButton() {
     const button = document.getElementById("overview-add-to-vote");
     if (!button) return;
@@ -538,11 +483,11 @@ async function doNearbySearch() {
                 : "";
             infoWindow.setContent(
                 `<div style="max-width:220px;line-height:1.4">
-        ${photoHTML}
-        <div style="font-weight:600;font-size:14px;">${place.displayName?.text || ""}</div>
-        <div style="font-size:12px;color:#555;">${place.formattedAddress || ""}</div>
-        ${place.rating ? `<div style="margin-top:2px;font-size:12px;">⭐ ${place.rating} (${place.userRatingCount || 0})</div>` : ""}
-        </div>`
+       ${photoHTML}
+       <div style="font-weight:600;font-size:14px;">${place.displayName?.text || ""}</div>
+       <div style="font-size:12px;color:#555;">${place.formattedAddress || ""}</div>
+       ${place.rating ? `<div style="margin-top:2px;font-size:12px;">⭐ ${place.rating} (${place.userRatingCount || 0})</div>` : ""}
+     </div>`
             );
             infoWindow.open({ map, anchor: marker });
 
@@ -552,6 +497,7 @@ async function doNearbySearch() {
                 setOverviewByPlaceId(place.id);
             }
         });
+
         resultMarkers.push(marker);
     }
 }
@@ -598,8 +544,7 @@ function onTestAddClick() {
     message.textContent = "";
     id++;
     const restaurantName = `This is test #${id}`;
-    
-    // Emit to WebSocket so all users get the update
+
     socket.emit('add-restaurant', {
         id: id,
         name: restaurantName,
@@ -750,7 +695,7 @@ function showVoteNotification(userName, votedFor) {
     notification.style.transition = 'all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
     notification.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
     notification.innerHTML = `<i class="check circle icon"></i> <strong>${userName}</strong> voted for <em>${votedFor}</em>`;
-    
+
     document.body.appendChild(notification);
     
     setTimeout(() => {
