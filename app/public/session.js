@@ -68,9 +68,6 @@ socket.on('vote-submitted', (data) => {
     }
 });
 
-// $(modal).modal("attach events", shareLink, "show");
-// $(".menu.item").tab();
-
 // Display stored name
 let storedName = sessionStorage.getItem("name");
 let nameElement = document.getElementById("name");
