@@ -9,6 +9,9 @@ let testAdd = document.getElementById("test-add");
 let voteButton = document.getElementById("vote-button");
 let message = document.getElementById("message");
 let results = document.getElementById("results");
+let session_id = window.location.pathname.split('/')[2];
+let joinModal = document.getElementById('joinModal');
+let sessionContent = document.getElementById('sessionContent');
 
 // Socket.IO connection
 const socket = io();
@@ -65,8 +68,68 @@ socket.on('vote-submitted', (data) => {
     }
 });
 
-$(modal).modal("attach events", shareLink, "show");
-$(".menu.item").tab();
+// Display stored name
+let storedName = sessionStorage.getItem("name");
+let nameElement = document.getElementById("name");
+if (storedName && nameElement) {
+    nameElement.textContent = storedName;
+}
+
+// Check if user is already in session via cookie
+fetch(`/api/session/${session_id}/user`)
+.then(response => response.json())
+.then(data => {
+    if (data.name) {
+        showSessionContent(data.name);
+    } else {
+        showJoinModal();
+    }
+}).catch(error => {
+    console.error('Error fetching user:', error);
+    showJoinModal();
+});
+
+function showJoinModal() {
+    sessionContent.style.display = 'none';
+    loadExistingUsers();
+
+    $('#joinTabs .item').tab();
+    $('.ui.dropdown').dropdown();
+
+    $(joinModal).modal({
+        closable: false,
+        onApprove: function() {
+            return false;
+        }
+    }).modal('show');
+}
+
+function loadExistingUsers() {
+    fetch(`/api/session/${session_id}/users`)
+    .then(response => response.json())
+    .then(data => {
+        let dropdown = document.getElementById('existingUserSelect');
+
+        dropdown.textContent = '';
+
+        let defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = 'Choose your name...';
+        dropdown.append(defaultOption);
+
+        data.users.forEach(user => {
+            let option = document.createElement('option');
+            option.value = user.user_id;
+            option.textContent = user.name;
+            dropdown.append(option);
+        });
+
+        $('.ui.dropdown').dropdown('refresh');
+    })
+    .catch(error => {
+        console.error('Error loading users:', error);
+    });
+}
 
 function showSessionContent(name) {
     if (document.getElementById("name")) {
