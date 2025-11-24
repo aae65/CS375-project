@@ -160,7 +160,7 @@ document.getElementById('joinButton').addEventListener('click', function(e) {
     e.preventDefault();
     
     let joinErrorBox = document.getElementById('joinErrorBox');
-    let activeTab = document.querySelector('.tab.segment.active').getAttribute('data-tab');
+    let activeTab = document.querySelector('#joinTabs .item.active').getAttribute('data-tab');
     
     if (activeTab === 'existing') {
         let selectedUserId = document.getElementById('existingUserSelect').value;
