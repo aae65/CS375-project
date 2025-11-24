@@ -5,7 +5,18 @@ let { Pool } = require('pg');
 let http = require('http');
 let server = http.createServer(app);
 let { Server } = require('socket.io');
-let io = new Server(server);
+let io = new Server(server, {
+    cors: {
+        origin: process.env.NODE_ENV === 'production' 
+            ? [/\.fly\.dev$/, /^https?:\/\/where2eat\.fly\.dev/]
+            : "*",
+        methods: ["GET", "POST"]
+    },
+    transports: ['websocket', 'polling'],
+    allowUpgrades: true,
+    pingTimeout: 60000,
+    pingInterval: 25000
+});
 let fs = require("fs");
 let cookieParser = require("cookie-parser");
 app.use(express.json());
@@ -373,6 +384,7 @@ app.post("/vote", async (req, res) => {
     }
 });
 
-server.listen(3000, "0.0.0.0", () => {
-    console.log("Server running at http://localhost:3000");
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, () => {
+    console.log(`Server running at http://localhost:${PORT}`);
 });
