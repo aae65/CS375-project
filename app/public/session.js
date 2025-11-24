@@ -13,7 +13,7 @@ let session_id = window.location.pathname.split('/')[2];
 let joinModal = document.getElementById('joinModal');
 let sessionContent = document.getElementById('sessionContent');
 
-// Socket.IO connection
+// Socket.IO should automatically use the current page's protocol and hostname
 const socket = io();
 
 // Get session ID from URL
