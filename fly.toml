@@ -1,8 +1,5 @@
 app = "where2eat"
 
-[build]
-  builder = "heroku/buildpacks:20"
-
 [env]
   PORT = "8080"
 
