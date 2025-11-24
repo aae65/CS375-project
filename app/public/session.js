@@ -13,8 +13,15 @@ let session_id = window.location.pathname.split('/')[2];
 let joinModal = document.getElementById('joinModal');
 let sessionContent = document.getElementById('sessionContent');
 
-// Socket.IO should automatically use the current page's protocol and hostname
-const socket = io();
+// Socket.IO configuration for Fly.io
+// Automatically uses wss:// for https:// pages and ws:// for http:// pages
+const socket = io({
+    transports: ['websocket', 'polling'],
+    upgrade: true,
+    reconnection: true,
+    reconnectionDelay: 1000,
+    reconnectionAttempts: 5
+});
 
 // Get session ID from URL
 function getSessionId() {
