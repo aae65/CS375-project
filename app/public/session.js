@@ -150,7 +150,11 @@ function showSessionContent(name) {
                 if (!map) {
                     initMap();
                 }
-                setTimeout(() => map && map.invalidateSize(), 100);
+                setTimeout(() => {
+                    if (map && window.google && google.maps && google.maps.event) {
+                        google.maps.event.trigger(map, 'resize');
+                    }
+                }, 100);
             }
         }
     });
