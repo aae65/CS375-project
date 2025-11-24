@@ -1,4 +1,7 @@
-app = "where2eat"
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+
+app = 'where2eat'
+primary_region = 'iad'
 
 [env]
   PORT = "8080"
@@ -25,4 +28,8 @@ app = "where2eat"
     timeout = "2s"
     grace_period = "5s"
 
-
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 1024
