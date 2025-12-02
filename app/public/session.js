@@ -3,6 +3,7 @@ let shareLink = document.getElementById("generate");
 let modal = document.getElementById("modal");
 let copyLink = document.getElementById("copyLink");
 let linkCopied = document.getElementById("link-copied");
+let userId = sessionStorage.getItem("user_id");
 let name = sessionStorage.getItem("name");
 let userId = null; // Will be fetched from server
 let isCreator = false; // Will be set when user info is loaded
@@ -91,14 +92,17 @@ if (storedName && nameElement) {
 
 // Check if user is already in session via cookie
 fetch(`/api/session/${session_id}/user`)
-.then(response => response.json())
-.then(data => {
-    if (data.name) {
-        showSessionContent(data.name);
-    } else {
-        showJoinModal();
-    }
-}).catch(error => {
+    .then(response => response.json())
+    .then(data => {
+        if (data.name) {
+            sessionStorage.setItem("user_id", data.user_id);
+            sessionStorage.setItem("name", data.name);
+            userId = data.user_id;
+            showSessionContent(data.name);
+        } else {
+            showJoinModal();
+        }
+    }).catch(error => {
     console.error('Error fetching user:', error);
     showJoinModal();
 });
@@ -112,7 +116,7 @@ function showJoinModal() {
 
     $(joinModal).modal({
         closable: false,
-        onApprove: function() {
+        onApprove: function () {
             return false;
         }
     }).modal('show');
@@ -120,35 +124,35 @@ function showJoinModal() {
 
 function loadExistingUsers() {
     fetch(`/api/session/${session_id}/users`)
-    .then(response => response.json())
-    .then(data => {
-        let dropdown = document.getElementById('existingUserSelect');
+        .then(response => response.json())
+        .then(data => {
+            let dropdown = document.getElementById('existingUserSelect');
 
-        dropdown.textContent = '';
+            dropdown.textContent = '';
 
-        let defaultOption = document.createElement('option');
-        defaultOption.value = '';
-        defaultOption.textContent = 'Choose your name...';
-        dropdown.append(defaultOption);
+            let defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = 'Choose your name...';
+            dropdown.append(defaultOption);
 
-        data.users.forEach(user => {
-            let option = document.createElement('option');
-            option.value = user.user_id;
-            option.textContent = user.name;
-            dropdown.append(option);
+            data.users.forEach(user => {
+                let option = document.createElement('option');
+                option.value = user.user_id;
+                option.textContent = user.name;
+                dropdown.append(option);
+            });
+
+            $('.ui.dropdown').dropdown('refresh');
+        })
+        .catch(error => {
+            console.error('Error loading users:', error);
         });
-
-        $('.ui.dropdown').dropdown('refresh');
-    })
-    .catch(error => {
-        console.error('Error loading users:', error);
-    });
 }
 
 function showSessionContent(name) {
     if (document.getElementById("name")) {
         document.getElementById("name").textContent = name;
-    }   
+    }
     sessionContent.style.display = 'block';
     $(joinModal).modal('hide');
 
@@ -174,21 +178,21 @@ function showSessionContent(name) {
     });
 }
 
-document.getElementById('joinButton').addEventListener('click', function(e) {
+document.getElementById('joinButton').addEventListener('click', function (e) {
     e.preventDefault();
-    
+
     let joinErrorBox = document.getElementById('joinErrorBox');
     let activeTab = document.querySelector('#joinTabs .item.active').getAttribute('data-tab');
-    
+
     if (activeTab === 'existing') {
         let selectedUserId = document.getElementById('existingUserSelect').value;
-        
+
         if (!selectedUserId) {
             joinErrorBox.textContent = 'Please select your name from the list';
             joinErrorBox.style.display = 'block';
             return;
         }
-        
+
         fetch(`/session/${session_id}/join`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -221,13 +225,13 @@ document.getElementById('joinButton').addEventListener('click', function(e) {
         
     } else {
         let newName = document.querySelector('input[name="newName"]').value;
-        
+
         if (!newName || newName.trim().length === 0) {
             joinErrorBox.textContent = 'Please enter your name';
             joinErrorBox.style.display = 'block';
             return;
         }
-        
+
         fetch(`/session/${session_id}/join`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -263,7 +267,7 @@ document.getElementById('joinButton').addEventListener('click', function(e) {
 function initializeShareFunctionality() {
     // Share modal functionality
     $(modal).modal('attach events', shareLink, 'show');
-    
+
     shareLink.addEventListener('click', () => {
         linkInput.value = window.location.href;
         $(modal).modal('show');
@@ -425,7 +429,7 @@ function setOverviewByPlaceId(placeId) {
     if (placeById[placeId]) {
         currentPlaceForOverview = placeById[placeId];
     } else {
-        currentPlaceForOverview = { id: placeId };
+        currentPlaceForOverview = {id: placeId};
     }
     ensureOverviewAddButton();
     showAddButton();
@@ -587,7 +591,7 @@ async function doNearbySearch() {
        ${place.rating ? `<div style="margin-top:2px;font-size:12px;">⭐ ${place.rating} (${place.userRatingCount || 0})</div>` : ""}
      </div>`
             );
-            infoWindow.open({ map, anchor: marker });
+            infoWindow.open({map, anchor: marker});
 
             if (place.id) {
                 placeById[place.id] = place;
@@ -667,13 +671,13 @@ function addRestaurantToVotingList(restaurant) {
         return;
     }
     restaurantIds.add(id);
-    
+
     // Update message and show vote button if this is the first restaurant
     if (restaurantIds.size === 1) {
         message.textContent = "";
         voteButton.style.display = "block";
     }
-    
+
     const details = [];
 
     if (rating) {
@@ -742,7 +746,7 @@ function onVoteClick() {
 
         fetch("/vote", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {"Content-Type": "application/json"},
             body: JSON.stringify({
                 session_id: sessionId,
                 user_id: parseInt(userId),
@@ -850,7 +854,7 @@ function showVoteNotification(userName, votedFor) {
     notification.className = 'ui positive message';
     notification.style.position = 'fixed';
     notification.style.top = '60px';
-    notification.style.right = '-300px'; 
+    notification.style.right = '-300px';
     notification.style.zIndex = '1001';
     notification.style.minWidth = '250px';
     notification.style.maxWidth = '350px';
@@ -859,7 +863,7 @@ function showVoteNotification(userName, votedFor) {
     notification.innerHTML = `<i class="check circle icon"></i> <strong>${userName}</strong> voted for <em>${votedFor}</em>`;
 
     document.body.appendChild(notification);
-    
+
     setTimeout(() => {
         notification.style.right = '10px';
     }, 10);
@@ -868,7 +872,7 @@ function showVoteNotification(userName, votedFor) {
         notification.style.opacity = '0';
         notification.style.transform = 'translateX(20px)';
     }, 2500);
-    
+
     setTimeout(() => {
         notification.remove();
     }, 3000);
