@@ -1,23 +1,26 @@
-# fly.toml app configuration file generated for where2eat on 2025-12-02T17:18:40Z
-#
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
-#
+app = "where2eat"
 
-app = 'where2eat'
-primary_region = 'iad'
+[env]
+  PORT = "8080"
 
-[build]
-
-[http_service]
+[[services]]
   internal_port = 8080
-  force_https = true
-  auto_stop_machines = 'stop'
-  auto_start_machines = true
-  min_machines_running = 0
-  processes = ['app']
+  protocol = "tcp"
 
-[[vm]]
-  memory = '1gb'
-  cpu_kind = 'shared'
-  cpus = 1
-  memory_mb = 1024
+  [services.concurrency]
+    hard_limit = 25
+    soft_limit = 20
+    type = "connections"
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+  [[services.tcp_checks]]
+    interval = "10s"
+    timeout = "2s"
+    grace_period = "5s"
