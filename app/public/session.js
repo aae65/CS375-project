@@ -5,7 +5,6 @@ let copyLink = document.getElementById("copyLink");
 let linkCopied = document.getElementById("link-copied");
 let userId = sessionStorage.getItem("user_id");
 let name = sessionStorage.getItem("name");
-let userId = null; // Will be fetched from server
 let isCreator = false; // Will be set when user info is loaded
 let vote = document.getElementById("vote");
 let voteButton = document.getElementById("vote-button");
