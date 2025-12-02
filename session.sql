@@ -28,7 +28,7 @@ CREATE TABLE restaurants (
     session_id UUID REFERENCES session(session_id),
     restaurant_id SERIAL PRIMARY KEY,
     name VARCHAR(100),
-    address VARCHAR(200),
+    address VARCHAR(200)
 );
 
 CREATE TABLE votes (

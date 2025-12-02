@@ -7,7 +7,6 @@ let name = sessionStorage.getItem("name");
 let userId = null; // Will be fetched from server
 let isCreator = false; // Will be set when user info is loaded
 let vote = document.getElementById("vote");
-let testAdd = document.getElementById("test-add");
 let voteButton = document.getElementById("vote-button");
 let finishVotingButton = document.getElementById("finish-voting-button");
 let message = document.getElementById("message");
@@ -632,23 +631,7 @@ voteButton.style.display = "none";
 message.textContent = "No restaurants added. Add some to vote!";
 
 // Event listeners for add/vote
-testAdd.addEventListener('click', onTestAddClick);
 voteButton.addEventListener('click', onVoteClick);
-
-function onTestAddClick() {
-    message.textContent = "";
-    id++;
-    const restaurantName = `This is test #${id}`;
-
-    socket.emit('add-restaurant', {
-        id: id,
-        name: restaurantName,
-        address: "",
-        rating: null,
-        userRatingCount: null,
-        priceLevel: null
-    });
-}
 
 // Helper function to add place to session
 function addPlaceToSession(place) {
@@ -795,11 +778,11 @@ function onFinishVotingClick() {
         message.textContent = 'Only the session creator can finish voting early.';
         return;
     }
-    
+
     if (!confirm('Are you sure you want to finish voting? This will calculate the winner immediately.')) {
         return;
     }
-    
+
     fetch(`/session/${sessionId}/finish-voting`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -890,7 +873,7 @@ function showVoteNotification(userName, votedFor) {
 window.addEventListener("DOMContentLoaded", () => {
     const locBtn = document.getElementById("locBtn");
     if (locBtn) locBtn.addEventListener("click", showLocation);
-    
+
     // Always fetch userId from server (it's stored in cookies)
     const sessionId = getSessionId();
     fetch(`/api/session/${sessionId}/current-user`)
@@ -906,13 +889,13 @@ window.addEventListener("DOMContentLoaded", () => {
                 userId = data.userId;
                 sessionStorage.setItem('userId', String(userId));
                 console.log('Retrieved userId from server:', userId);
-                
+
                 // If we have a userId but no name in sessionStorage, store it
                 if (data.name && !name) {
                     name = data.name;
                     sessionStorage.setItem('name', name);
                 }
-                
+
                 // Check if user is the creator
                 if (data.isCreator) {
                     isCreator = true;
@@ -923,7 +906,7 @@ window.addEventListener("DOMContentLoaded", () => {
             }
         })
         .catch(err => console.error('Error getting userId on load:', err));
-    
+
     // Add finish voting button event listener
     if (finishVotingButton) {
         finishVotingButton.addEventListener('click', onFinishVotingClick);
