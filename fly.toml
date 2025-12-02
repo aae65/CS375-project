@@ -3,11 +3,6 @@ primary_region = "iad"
 
 [build]
 
-[vm]
-  memory = "1gb"
-  cpu_kind = "shared"
-  cpus = 1
-
 [env]
   PORT = "8080"
 
@@ -32,3 +27,9 @@ primary_region = "iad"
     interval = "10s"
     timeout = "2s"
     grace_period = "5s"
+
+[[vm]]  
+    memory = '1gb'  
+    cpu_kind = 'shared'  
+    cpus = 1  
+    memory_mb = 1024
