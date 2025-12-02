@@ -66,9 +66,9 @@ app.post("/generate-session", (req, res) => {
     if (typeof req.body.end_date === "string" && req.body.end_date.trim().length > 0) {
         end_date = new Date(req.body.end_date.trim());
         let today = new Date();
-        today.setHours(0, 0, 0, 0); 
+        today.setHours(0, 0, 0, 0);
         validEndDate = !isNaN(end_date.getTime()) && end_date >= today;
-    } 
+    }
 
     let event_date = null;
     let validEventDate = false;
@@ -77,7 +77,7 @@ app.post("/generate-session", (req, res) => {
         let today = new Date();
         today.setHours(0, 0, 0, 0);
         validEventDate = !isNaN(event_date.getTime()) && event_date >= today;
-        
+
         // Event date should be on or after end date
         if (validEndDate && validEventDate && event_date < end_date) {
             validEventDate = false;
@@ -129,7 +129,7 @@ app.post("/generate-session", (req, res) => {
             `, [session_id, creator_user_id])
             .then(() => {
                 res.cookie(`session_${session_id}`, creator_user_id, cookieOptions);
-                
+
                 let link = `${req.protocol}://${req.get('host')}/session/${session_id}`;
                 res.status(200).json({data: link});
             });
@@ -151,7 +151,7 @@ app.post("/session/:session_id/join", (req, res) => {
         if (!existingUserId) {
             return res.status(400).json({ error: "Please select a user" });
         }
-        
+
         pool.query(`
             SELECT user_id FROM session_users 
             WHERE session_id = $1 AND user_id = $2
@@ -160,19 +160,19 @@ app.post("/session/:session_id/join", (req, res) => {
             if (result.rows.length === 0) {
                 return res.status(400).json({ error: "User not found in session" });
             }
-    
+
             res.cookie(`session_${session_id}`, existingUserId, cookieOptions);
-            
+
             return pool.query(`SELECT name FROM users WHERE user_id = $1`, [existingUserId])
             .then((userResult) => {
-                res.status(200).json({name: userResult.rows[0].name});
+                res.status(200).json({name: userResult.rows[0].name, userId: existingUserId});
             });
         })
         .catch((error) => {
             console.error("Error selecting existing user:", error);
             res.status(500).json({ error: "Error selecting user" });
         });
-        
+
     } else {
         // new user joining
         if (!name || typeof name !== "string" || name.trim().length === 0) {
@@ -187,7 +187,7 @@ app.post("/session/:session_id/join", (req, res) => {
             .then(() => {
                 res.cookie(`session_${session_id}`, user_id, cookieOptions);
 
-                res.status(200).json({ name: name.trim() });
+                res.status(200).json({ name: name.trim(), userId: user_id });
             });
         })
         .catch((error) => {
@@ -200,11 +200,11 @@ app.post("/session/:session_id/join", (req, res) => {
 app.get("/api/session/:session_id/user", (req, res) => {
     let session_id = req.params.session_id;
     let userCookie = req.cookies[`session_${session_id}`];
-    
+
     if (!userCookie) {
         return res.status(404).json({ error: "User not found in session" });
     }
-    
+
     pool.query(`
         SELECT u.name 
         FROM users u 
@@ -223,9 +223,41 @@ app.get("/api/session/:session_id/user", (req, res) => {
     });
 });
 
+app.get("/api/session/:session_id/current-user", (req, res) => {
+    let session_id = req.params.session_id;
+    let userCookie = req.cookies[`session_${session_id}`];
+
+    if (!userCookie) {
+        return res.status(404).json({ error: "User not found in session" });
+    }
+
+    pool.query(`
+        SELECT u.user_id, u.name, ss.creator_name
+        FROM users u 
+        JOIN session_users su ON u.user_id = su.user_id 
+        JOIN session_settings ss ON ss.session_id = su.session_id
+        WHERE su.session_id = $1 AND u.user_id = $2
+    `, [session_id, userCookie])
+    .then((result) => {
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "User not found" });
+        }
+        const user = result.rows[0];
+        res.status(200).json({
+            userId: user.user_id,
+            name: user.name,
+            isCreator: user.name === user.creator_name
+        });
+    })
+    .catch((error) => {
+        console.error("Error fetching user:", error);
+        res.status(500).json({ error: "Error fetching user" });
+    });
+});
+
 app.get("/api/session/:session_id/users", (req, res) => {
     let session_id = req.params.session_id;
-    
+
     pool.query(`
         SELECT u.user_id, u.name 
         FROM users u 
@@ -250,8 +282,8 @@ app.get("/session/:session_id", (req, res) => {
         if (result.rows.length === 0) {
             return res.status(404).send("Session not found.");
         } else {
-            let htmlPath = path.join(__dirname, "public", "session.html");  
-            let html = fs.readFileSync(htmlPath, "utf8");                     
+            let htmlPath = path.join(__dirname, "public", "session.html");
+            let html = fs.readFileSync(htmlPath, "utf8");
             html = html.replace(/YOUR_API_KEY/g, process.env.GOOGLE_MAPS_API_KEY || "");
             return res.type("html").send(html);
         }
@@ -262,9 +294,6 @@ app.get("/session/:session_id", (req, res) => {
     });
 });
 
-// In-memory storage for session restaurants
-const sessionRestaurants = new Map();
-
 // Socket.IO connection handling
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
@@ -273,41 +302,65 @@ io.on('connection', (socket) => {
     socket.on('join-session', (sessionId) => {
         socket.join(`session-${sessionId}`);
         socket.sessionId = sessionId;
-        
+
         // Get user count in room
         const room = io.sockets.adapter.rooms.get(`session-${sessionId}`);
         const userCount = room ? room.size : 1;
-        
+
         // Tell everyone in the session about the new user count
         io.to(`session-${sessionId}`).emit('user-count', userCount);
         
-        // Send existing restaurants to the newly joined user
-        const existingRestaurants = sessionRestaurants.get(sessionId) || [];
-        if (existingRestaurants.length > 0) {
-            socket.emit('existing-restaurants', existingRestaurants);
-        }
+        // Send existing restaurants to the newly joined user from database
+        pool.query(`
+            SELECT restaurant_id as id, name, address
+            FROM restaurants
+            WHERE session_id = $1
+        `, [sessionId])
+        .then((result) => {
+            if (result.rows.length > 0) {
+                socket.emit('existing-restaurants', result.rows);
+            }
+        })
+        .catch((err) => console.error('Error fetching restaurants:', err));
         
         console.log(`User ${socket.id} joined session ${sessionId}. Total users: ${userCount}`);
     });
 
     // Handle restaurant addition
-    socket.on('add-restaurant', (data) => {
+    socket.on('add-restaurant', async (data) => {
         if (socket.sessionId) {
             console.log(`Restaurant added to session ${socket.sessionId}:`, data);
             
-            // Store restaurant in memory
-            if (!sessionRestaurants.has(socket.sessionId)) {
-                sessionRestaurants.set(socket.sessionId, []);
+            try {
+                // Check if restaurant already exists
+                const existing = await pool.query(`
+                    SELECT restaurant_id FROM restaurants
+                    WHERE session_id = $1 AND name = $2
+                `, [socket.sessionId, data.name]);
+
+                let restaurant_id;
+                if (existing.rows.length > 0) {
+                    restaurant_id = existing.rows[0].restaurant_id;
+                } else {
+                    // Insert into database
+                    const result = await pool.query(`
+                        INSERT INTO restaurants (session_id, name, address)
+                        VALUES ($1, $2, $3)
+                        RETURNING restaurant_id
+                    `, [socket.sessionId, data.name, data.address || '']);
+
+                    restaurant_id = result.rows[0].restaurant_id;
+                }
+
+                // Broadcast to all users in the session (including sender)
+                io.to(`session-${socket.sessionId}`).emit('restaurant-added', {
+                    id: restaurant_id,
+                    name: data.name,
+                    address: data.address || ''
+                });
+            } catch (err) {
+                console.error('Error adding restaurant:', err);
             }
-            const restaurants = sessionRestaurants.get(socket.sessionId);
-            
-            // Avoid duplicates
-            if (!restaurants.some(r => r.id === data.id)) {
-                restaurants.push(data);
-            }
-            
-            // Broadcast to all users in the session (including sender)
-            io.to(`session-${socket.sessionId}`).emit('restaurant-added', data);
         }
     });
 
@@ -338,49 +391,172 @@ io.on('connection', (socket) => {
 });
 
 app.post("/vote", async (req, res) => {
-    const { session_id, user_id, selection } = req.body;
+    const { session_id, user_id, restaurant_id } = req.body;
+
+    console.log('Vote request:', { session_id, user_id, restaurant_id });
+
+    if (!session_id || !user_id || !restaurant_id) {
+        console.error('Missing required fields:', { session_id, user_id, restaurant_id });
+        return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
 
     try {
-        await pool.query(`
-            UPDATE users
-            SET "votedFor" = $1
-            WHERE user_id = $2 AND session_id = $3
-        `, [selection, user_id, session_id]);
-
-        const result = await pool.query(`
-            SELECT COUNT(*) AS total,
-                   COUNT("votedFor") AS voted
-            FROM users
+        // Check if voting period has ended
+        const sessionSettings = await pool.query(`
+            SELECT end_date FROM session_settings
             WHERE session_id = $1
         `, [session_id]);
 
-        const total = parseInt(result.rows[0].total);
-        const voted = parseInt(result.rows[0].voted);
+        if (sessionSettings.rows.length === 0) {
+            return res.status(400).json({ success: false, error: 'Session not found' });
+        }
+
+        const endDate = new Date(sessionSettings.rows[0].end_date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        endDate.setHours(0, 0, 0, 0);
+
+        if (today > endDate) {
+            return res.status(400).json({
+                success: false,
+                error: 'Voting period has ended',
+                votingEnded: true
+            });
+        }
+
+        // Verify user is in session
+        const userCheck = await pool.query(`
+            SELECT user_id FROM session_users
+            WHERE session_id = $1 AND user_id = $2
+        `, [session_id, user_id]);
+
+        if (userCheck.rows.length === 0) {
+            console.error('User not in session:', { session_id, user_id });
+            return res.status(400).json({ success: false, error: 'User not in session' });
+        }
+
+        // Delete any existing vote from this user in this session
+        await pool.query(`
+            DELETE FROM votes
+            WHERE session_id = $1 AND user_id = $2
+        `, [session_id, user_id]);
+
+        // Insert new vote
+        await pool.query(`
+            INSERT INTO votes (session_id, user_id, restaurant_id)
+            VALUES ($1, $2, $3)
+        `, [session_id, user_id, restaurant_id]);
+
+        // Get total users in session
+        const totalResult = await pool.query(`
+            SELECT COUNT(*) AS total
+            FROM session_users
+            WHERE session_id = $1
+        `, [session_id]);
+
+        // Get number of users who voted
+        const votedResult = await pool.query(`
+            SELECT COUNT(DISTINCT user_id) AS voted
+            FROM votes
+            WHERE session_id = $1
+        `, [session_id]);
+        const totalUsers = parseInt(totalRes.rows[0].total, 10);
+
+        const total = parseInt(totalResult.rows[0].total);
+        const voted = parseInt(votedResult.rows[0].voted);
 
         let winner = null;
+        let winnerName = null;
 
         if (total === voted) {
-            const voteResult = await pool.query(`
-                SELECT "votedFor", COUNT(*) AS count
-                FROM users
-                WHERE session_id = $1
-                GROUP BY "votedFor"
-                ORDER BY count DESC
+            // Get winner by counting votes
+            const winnerResult = await pool.query(`
+                SELECT r.restaurant_id, r.name, COUNT(*) as vote_count
+                FROM votes v
+                JOIN restaurants r ON v.restaurant_id = r.restaurant_id
+                WHERE v.session_id = $1
+                GROUP BY r.restaurant_id, r.name
+                ORDER BY vote_count DESC
                 LIMIT 1
             `, [session_id]);
 
-            winner = voteResult.rows[0].votedFor;
+            if (winnerResult.rows.length > 0) {
+                winner = winnerResult.rows[0].restaurant_id;
+                winnerName = winnerResult.rows[0].name;
+
+                // Broadcast winner to all users in the session
+                io.to(`session-${session_id}`).emit('voting-complete', {
+                    winner: winnerName
+                });
+            }
         }
 
         res.json({
             success: true,
             allVoted: total === voted,
-            winner
+            winner: winnerName
         });
 
     } catch (err) {
         console.error("Error updating vote:", err);
-        res.status(500).json({ success: false });
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.post("/session/:session_id/finish-voting", async (req, res) => {
+    const session_id = req.params.session_id;
+    const { user_id } = req.body;
+
+    try {
+        // Verify user is the session creator
+        const creatorCheck = await pool.query(`
+            SELECT ss.creator_name, u.name
+            FROM session_settings ss
+            JOIN session_users su ON su.session_id = ss.session_id
+            JOIN users u ON u.user_id = su.user_id
+            WHERE ss.session_id = $1 AND u.user_id = $2
+        `, [session_id, user_id]);
+
+        if (creatorCheck.rows.length === 0) {
+            return res.status(403).json({ error: 'User not found in session' });
+        }
+
+        if (creatorCheck.rows[0].creator_name !== creatorCheck.rows[0].name) {
+            return res.status(403).json({ error: 'Only the session creator can finish voting early' });
+        }
+
+        // Get winner by counting votes
+        const winnerResult = await pool.query(`
+            SELECT r.restaurant_id, r.name, COUNT(*) as vote_count
+            FROM votes v
+            JOIN restaurants r ON v.restaurant_id = r.restaurant_id
+            WHERE v.session_id = $1
+            GROUP BY r.restaurant_id, r.name
+            ORDER BY vote_count DESC
+            LIMIT 1
+        `, [session_id]);
+
+        let winnerName = null;
+        if (winnerResult.rows.length > 0) {
+            winnerName = winnerResult.rows[0].name;
+
+            // Broadcast winner to all users in the session
+            io.to(`session-${session_id}`).emit('voting-complete', {
+                winner: winnerName,
+                finishedEarly: true
+            });
+        } else {
+            return res.status(400).json({ error: 'No votes have been cast yet' });
+        }
+
+        res.json({
+            success: true,
+            winner: winnerName
+        });
+
+    } catch (err) {
+        console.error("Error finishing voting:", err);
+        res.status(500).json({ error: err.message });
     }
 });
 

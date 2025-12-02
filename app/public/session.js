@@ -4,9 +4,11 @@ let modal = document.getElementById("modal");
 let copyLink = document.getElementById("copyLink");
 let linkCopied = document.getElementById("link-copied");
 let name = sessionStorage.getItem("name");
+let userId = null; // Will be fetched from server
+let isCreator = false; // Will be set when user info is loaded
 let vote = document.getElementById("vote");
-let testAdd = document.getElementById("test-add");
 let voteButton = document.getElementById("vote-button");
+let finishVotingButton = document.getElementById("finish-voting-button");
 let message = document.getElementById("message");
 let results = document.getElementById("results");
 let session_id = window.location.pathname.split('/')[2];
@@ -65,6 +67,18 @@ socket.on('vote-submitted', (data) => {
     console.log('Vote submitted:', data);
     if (data.userName) {
         showVoteNotification(data.userName, data.vote);
+    }
+});
+
+// Listen for voting completion and display winner
+socket.on('voting-complete', (data) => {
+    console.log('Voting complete:', data);
+    if (data.winner) {
+        results.textContent = `${data.winner}`;
+        if (finishVotingButton) {
+            finishVotingButton.style.display = 'none';
+        }
+        voteButton.style.display = 'none';
     }
 });
 
@@ -186,6 +200,10 @@ document.getElementById('joinButton').addEventListener('click', function(e) {
         .then(response => {
             if (response.status === 200) {
                 return response.json().then(data => {
+                    if (data.userId) {
+                        userId = data.userId;
+                        sessionStorage.setItem('userId', String(userId));
+                    }
                     showSessionContent(data.name);
                 });
             } else {
@@ -221,6 +239,10 @@ document.getElementById('joinButton').addEventListener('click', function(e) {
         .then(response => {
             if (response.status === 200) {
                 return response.json().then(data => {
+                    if (data.userId) {
+                        userId = data.userId;
+                        sessionStorage.setItem('userId', String(userId));
+                    }
                     showSessionContent(data.name);
                 });
             } else {
@@ -613,23 +635,7 @@ voteButton.style.display = "none";
 message.textContent = "No restaurants added. Add some to vote!";
 
 // Event listeners for add/vote
-testAdd.addEventListener('click', onTestAddClick);
 voteButton.addEventListener('click', onVoteClick);
-
-function onTestAddClick() {
-    message.textContent = "";
-    id++;
-    const restaurantName = `This is test #${id}`;
-
-    socket.emit('add-restaurant', {
-        id: id,
-        name: restaurantName,
-        address: "",
-        rating: null,
-        userRatingCount: null,
-        priceLevel: null
-    });
-}
 
 // Helper function to add place to session
 function addPlaceToSession(place) {
@@ -692,7 +698,7 @@ function addRestaurantToVotingList(restaurant) {
         `
         <div class="field">
         <div class="ui radio checkbox">
-            <input type="radio" name="choice" id="r${id}" value="${name}">
+            <input type="radio" name="choice" id="r${id}" value="${id}" data-name="${name}">
             <label>
                 <div><strong>${name}</strong></div>
                 ${detailsHtml}
@@ -705,47 +711,107 @@ function addRestaurantToVotingList(restaurant) {
 
 function onVoteClick() {
     let choices = document.getElementsByName("choice");
-    let selection;
+    let restaurantId;
+    let restaurantName;
     for (let i = 0; i < choices.length; i++) {
         if (choices[i].checked) {
-            selection = choices[i].value;
+            restaurantId = choices[i].value;
+            restaurantName = choices[i].getAttribute('data-name');
             break;
         }
     }
-    if (!selection) {
+    if (!restaurantId) {
         message.textContent = "Please select a choice";
     } else {
-        message.textContent = `You have voted for ${selection}`;
+        message.textContent = `You have voted for ${restaurantName}`;
         voteButton.className = "ui disabled button";
         for (let i = 0; i < vote.children.length; i++) {
             vote.children[i].className = "disabled field";
         }
 
         socket.emit('submit-vote', {
-            vote: selection,
+            vote: restaurantName,
             userName: name || 'Anonymous'
         });
+
+        if (!userId) {
+            console.error('userId not found in sessionStorage');
+            message.textContent = 'Error: User ID not found. Please refresh the page.';
+            return;
+        }
 
         fetch("/vote", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 session_id: sessionId,
-                user_id: userId,
-                selection
+                user_id: parseInt(userId),
+                restaurant_id: parseInt(restaurantId)
             })
         })
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) {
+                    return res.json().then(data => {
+                        throw new Error(data.error || 'Voting failed');
+                    });
+                }
+                return res.json();
+            })
             .then(data => {
                 voteButton.classList.add("disabled");
-                message.textContent = `You voted for ${selection}`;
+                message.textContent = `You voted for ${restaurantName}`;
 
                 if (data.allVoted && data.winner) {
-                    results.textContent = `The winner is: ${data.winner}`;
+                    results.textContent = `${data.winner}`;
                 }
             })
-            .catch(err => console.error(err));
+            .catch(err => {
+                console.error('Voting error:', err);
+                if (err.message.includes('Voting period has ended')) {
+                    message.textContent = 'Voting period has ended. You can no longer vote.';
+                    voteButton.style.display = 'none';
+                } else {
+                    message.textContent = `Error: ${err.message}`;
+                }
+            });
     }
+}
+
+function onFinishVotingClick() {
+    if (!isCreator) {
+        message.textContent = 'Only the session creator can finish voting early.';
+        return;
+    }
+
+    if (!confirm('Are you sure you want to finish voting? This will calculate the winner immediately.')) {
+        return;
+    }
+
+    fetch(`/session/${sessionId}/finish-voting`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: parseInt(userId) })
+    })
+    .then(res => {
+        if (!res.ok) {
+            return res.json().then(data => {
+                throw new Error(data.error || 'Failed to finish voting');
+            });
+        }
+        return res.json();
+    })
+    .then(data => {
+        message.textContent = 'Voting has been finished!';
+        finishVotingButton.style.display = 'none';
+        voteButton.style.display = 'none';
+        if (data.winner) {
+            results.textContent = `${data.winner}`;
+        }
+    })
+    .catch(err => {
+        console.error('Error finishing voting:', err);
+        message.textContent = `Error: ${err.message}`;
+    });
 }
 
 // Helper function to show restaurants added-to-vote notification
@@ -811,4 +877,42 @@ function showVoteNotification(userName, votedFor) {
 window.addEventListener("DOMContentLoaded", () => {
     const locBtn = document.getElementById("locBtn");
     if (locBtn) locBtn.addEventListener("click", showLocation);
+
+    // Always fetch userId from server (it's stored in cookies)
+    const sessionId = getSessionId();
+    fetch(`/api/session/${sessionId}/current-user`)
+        .then(res => {
+            if (!res.ok) {
+                // User not logged in, will show join modal
+                return null;
+            }
+            return res.json();
+        })
+        .then(data => {
+            if (data && data.userId) {
+                userId = data.userId;
+                sessionStorage.setItem('userId', String(userId));
+                console.log('Retrieved userId from server:', userId);
+
+                // If we have a userId but no name in sessionStorage, store it
+                if (data.name && !name) {
+                    name = data.name;
+                    sessionStorage.setItem('name', name);
+                }
+
+                // Check if user is the creator
+                if (data.isCreator) {
+                    isCreator = true;
+                    if (finishVotingButton) {
+                        finishVotingButton.style.display = 'inline-block';
+                    }
+                }
+            }
+        })
+        .catch(err => console.error('Error getting userId on load:', err));
+
+    // Add finish voting button event listener
+    if (finishVotingButton) {
+        finishVotingButton.addEventListener('click', onFinishVotingClick);
+    }
 });
