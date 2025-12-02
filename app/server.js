@@ -460,7 +460,7 @@ app.post("/vote", async (req, res) => {
             FROM votes
             WHERE session_id = $1
         `, [session_id]);
-        const totalUsers = parseInt(totalRes.rows[0].total, 10);
+        const totalUsers = parseInt(totalResult.rows[0].total, 10);
 
         const total = parseInt(totalResult.rows[0].total);
         const voted = parseInt(votedResult.rows[0].voted);
