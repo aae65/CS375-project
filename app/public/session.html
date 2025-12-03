@@ -132,6 +132,10 @@
 
         /* Responsive: stack on mobile and toggle between map and list */
         @media (max-width: 768px) {
+            .user-counter {
+                display: none !important;
+            }
+
             .mobile-map-list-toggle-overlay {
                 display: inline-flex !important;
             }
@@ -160,7 +164,7 @@
 <gmpx-api-loader key="YOUR_API_KEY" libraries="places,marker"></gmpx-api-loader>
 
 <!-- User counter -->
-<div style="position: fixed; top: 10px; right: 10px; z-index: 1000;">
+<div class="user-counter" style="position: fixed; top: 10px; right: 10px; z-index: 1000;">
     <div class="ui green label">
         <i class="users icon"></i>
         <span id="user-count">1</span> user(s) online
