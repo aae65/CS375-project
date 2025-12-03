@@ -14,7 +14,49 @@ let results = document.getElementById("results");
 let session_id = window.location.pathname.split('/')[2];
 let joinModal = document.getElementById('joinModal');
 let sessionContent = document.getElementById('sessionContent');
+let sessionZipCache = null;
 let mobileToggleInitialized = false;
+
+async function fetchSessionZipIfNeeded() {
+    if (sessionZipCache) return sessionZipCache;
+
+    const attrZip = sessionContent?.getAttribute('data-zip');
+
+    if (attrZip && attrZip.trim() && attrZip !== '<%= session.zip_code %>') {
+        sessionZipCache = attrZip.trim();
+        console.log("Using ZIP from data-zip:", sessionZipCache);
+        return sessionZipCache;
+    }
+
+    const sessionId = getSessionId();
+
+    try {
+        const resp = await fetch(`/api/session/${sessionId}`);
+        if (!resp.ok) {
+            console.error('Failed to fetch session info for ZIP:', resp.status);
+            return null;
+        }
+
+        const data = await resp.json();
+
+        if (data.zip_code) {
+            sessionZipCache = String(data.zip_code);
+            console.log("Fetched ZIP from API:", sessionZipCache);
+
+            if (sessionContent) {
+                sessionContent.setAttribute('data-zip', sessionZipCache);
+            }
+            return sessionZipCache;
+        }
+    } catch (err) {
+        console.error('Error fetching session ZIP:', err);
+    }
+    return null;
+}
+
+function getSessionZip() {
+    return sessionZipCache;
+}
 
 // Resize map
 function resizeMapLayout() {
@@ -208,9 +250,6 @@ function showSessionContent(name) {
     $(joinModal).modal('hide');
 
     initializeShareFunctionality();
-
-    let locBtn = document.getElementById('locBtn');
-    if (locBtn) locBtn.addEventListener('click', showLocation);
 
     $('.menu .item').tab({
         onVisible: function (tabName) {
@@ -559,7 +598,7 @@ function initMap() {
             }
         });
     }
-    doNearbySearch();
+    initMapCenterFromZip();
 }
 
 window.initMap = initMap;
@@ -575,6 +614,66 @@ function addOrMoveMarker(position, title = "Selected") {
             position,
             title,
         });
+    }
+}
+
+async function initMapCenterFromZip() {
+    const apiKey = getApiKey();
+    if (!apiKey || !map) {
+        console.warn("apiKey/map missing, defaulting to nearby search");
+        doNearbySearch();
+        return;
+    }
+
+    const zip = await fetchSessionZipIfNeeded();
+    console.log("initMapCenterFromZip → resolved zip:", zip, "apiKey present:", !!apiKey, "map present:", !!map);
+
+    if (!zip) {
+        console.warn("No ZIP available, defaulting to nearby search from current center");
+        doNearbySearch();
+        return;
+    }
+
+    try {
+        const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Goog-Api-Key": apiKey,
+                "X-Goog-FieldMask": "places.location"
+            },
+            body: JSON.stringify({
+                textQuery: `${zip} United States`,
+                languageCode: "en",
+                regionCode: "US"
+            })
+        });
+
+        if (!resp.ok) {
+            console.error("Places searchText failed:", resp.status);
+            doNearbySearch();
+            return;
+        }
+
+        const data = await resp.json();
+        const place = data.places && data.places[0];
+        const loc = place && place.location;
+
+        if (!loc || loc.latitude == null || loc.longitude == null) {
+            console.warn("ZIP did not return coordinates:", zip, data);
+            doNearbySearch();
+            return;
+        }
+
+        const center = { lat: loc.latitude, lng: loc.longitude };
+        console.log("Centered by ZIP:", zip, center);
+
+        map.setCenter(center);
+        map.setZoom(13);
+        doNearbySearch();
+    } catch (err) {
+        console.error("Error resolving ZIP:", err);
+        doNearbySearch();
     }
 }
 
@@ -654,27 +753,6 @@ async function doNearbySearch() {
 
         resultMarkers.push(marker);
     }
-}
-
-// Geolocation: Show User’s Position
-function showLocation() {
-    if (!navigator.geolocation) {
-        alert("Geolocation not supported on this browser.");
-        return;
-    }
-    navigator.geolocation.getCurrentPosition(
-        pos => {
-            const position = {lat: pos.coords.latitude, lng: pos.coords.longitude};
-            map.setCenter(position);
-            map.setZoom(14);
-            addOrMoveMarker(position, "You are here");
-            doNearbySearch();
-        },
-        err => {
-            console.error(err);
-            alert("Unable to get your location.");
-        }
-    );
 }
 
 // Map, Place, and Tab Visibility and Event Bindings
@@ -941,9 +1019,6 @@ function showVoteNotification(userName, votedFor) {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
-    const locBtn = document.getElementById("locBtn");
-    if (locBtn) locBtn.addEventListener("click", showLocation);
-
     // Always fetch userId from server (it's stored in cookies)
     const sessionId = getSessionId();
     fetch(`/api/session/${sessionId}/current-user`)
