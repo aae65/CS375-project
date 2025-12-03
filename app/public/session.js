@@ -5,7 +5,7 @@ let copyLink = document.getElementById("copyLink");
 let linkCopied = document.getElementById("link-copied");
 let userId = sessionStorage.getItem("user_id");
 let name = sessionStorage.getItem("name");
-let isCreator = false; // Will be set when user info is loaded
+let isCreator = false;
 let vote = document.getElementById("vote");
 let voteButton = document.getElementById("vote-button");
 let finishVotingButton = document.getElementById("finish-voting-button");
@@ -14,6 +14,58 @@ let results = document.getElementById("results");
 let session_id = window.location.pathname.split('/')[2];
 let joinModal = document.getElementById('joinModal');
 let sessionContent = document.getElementById('sessionContent');
+let mobileToggleInitialized = false;
+
+// Resize map
+function resizeMapLayout() {
+    const layout = document.querySelector('.map-and-details');
+    if (!layout) return;
+
+    const rect = layout.getBoundingClientRect();
+    const bottomPadding = 16;
+    const available = window.innerHeight - rect.top - bottomPadding;
+
+    if (available > 200) {
+        layout.style.height = available + 'px';
+    }
+}
+
+// Mobile map/list toggle
+function setupMobileMapListToggle() {
+    if (mobileToggleInitialized) return;
+
+    const layout = document.querySelector('.map-and-details');
+    const btnMap = document.getElementById('mobile-show-map');
+    const btnList = document.getElementById('mobile-show-list');
+
+    if (!layout || !btnMap || !btnList) return;
+
+    function setView(mode) {
+        layout.classList.remove('mobile-view-map', 'mobile-view-list');
+
+        if (mode === 'map') {
+            layout.classList.add('mobile-view-map');
+            btnMap.classList.add('active');
+            btnList.classList.remove('active');
+
+            if (map && window.google && google.maps && google.maps.event) {
+                google.maps.event.trigger(map, 'resize');
+            }
+        } else {
+            layout.classList.add('mobile-view-list');
+            btnList.classList.add('active');
+            btnMap.classList.remove('active');
+        }
+
+        resizeMapLayout();
+    }
+
+    btnMap.addEventListener('click', () => setView('map'));
+    btnList.addEventListener('click', () => setView('list'));
+
+    mobileToggleInitialized = true;
+    setView('map');
+}
 
 // Socket.IO should automatically use the current page's protocol and hostname
 const socket = io();
@@ -200,28 +252,28 @@ document.getElementById('joinButton').addEventListener('click', function (e) {
                 existingUserId: selectedUserId
             })
         })
-        .then(response => {
-            if (response.status === 200) {
-                return response.json().then(data => {
-                    if (data.userId) {
-                        userId = data.userId;
-                        sessionStorage.setItem('userId', String(userId));
-                    }
-                    showSessionContent(data.name);
-                });
-            } else {
-                return response.json().then(data => {
-                    joinErrorBox.textContent = data.error || 'Error selecting user';
-                    joinErrorBox.style.display = 'block';
-                });
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            joinErrorBox.textContent = 'Network error. Please try again.';
-            joinErrorBox.style.display = 'block';
-        });
-        
+            .then(response => {
+                if (response.status === 200) {
+                    return response.json().then(data => {
+                        if (data.userId) {
+                            userId = data.userId;
+                            sessionStorage.setItem('userId', String(userId));
+                        }
+                        showSessionContent(data.name);
+                    });
+                } else {
+                    return response.json().then(data => {
+                        joinErrorBox.textContent = data.error || 'Error selecting user';
+                        joinErrorBox.style.display = 'block';
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                joinErrorBox.textContent = 'Network error. Please try again.';
+                joinErrorBox.style.display = 'block';
+            });
+
     } else {
         let newName = document.querySelector('input[name="newName"]').value;
 
@@ -239,27 +291,27 @@ document.getElementById('joinButton').addEventListener('click', function (e) {
                 name: newName
             })
         })
-        .then(response => {
-            if (response.status === 200) {
-                return response.json().then(data => {
-                    if (data.userId) {
-                        userId = data.userId;
-                        sessionStorage.setItem('userId', String(userId));
-                    }
-                    showSessionContent(data.name);
-                });
-            } else {
-                return response.json().then(data => {
-                    joinErrorBox.textContent = data.error || 'Error joining session';
-                    joinErrorBox.style.display = 'block';
-                });
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            joinErrorBox.textContent = 'Network error. Please try again.';
-            joinErrorBox.style.display = 'block';
-        });
+            .then(response => {
+                if (response.status === 200) {
+                    return response.json().then(data => {
+                        if (data.userId) {
+                            userId = data.userId;
+                            sessionStorage.setItem('userId', String(userId));
+                        }
+                        showSessionContent(data.name);
+                    });
+                } else {
+                    return response.json().then(data => {
+                        joinErrorBox.textContent = data.error || 'Error joining session';
+                        joinErrorBox.style.display = 'block';
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                joinErrorBox.textContent = 'Network error. Please try again.';
+                joinErrorBox.style.display = 'block';
+            });
     }
 });
 
@@ -488,6 +540,7 @@ function initMap() {
     });
 
     infoWindow = new google.maps.InfoWindow();
+    resizeMapLayout();
 
     const autocompleteElement = document.getElementById("autocomplete");
     if (autocompleteElement) {
@@ -624,11 +677,21 @@ function showLocation() {
     );
 }
 
-// Tab Visibility and Event Bindings
-$(".menu .item").tab({
+// Map, Place, and Tab Visibility and Event Bindings
+$('.menu .item').tab({
     onVisible: function (tabName) {
-        if (tabName === "select" && window.google && google.maps) {
-            initMap();
+        // Tab Visibility and Event Bindings
+        if (tabName === 'select' || tabName === 'vote') {
+            if (!map) {
+                initMap();
+            }
+
+            setTimeout(() => {
+                if (map && window.google && google.maps && google.maps.event) {
+                    google.maps.event.trigger(map, 'resize');
+                }
+                resizeMapLayout();
+            }, 100);
         }
     }
 });
@@ -795,26 +858,26 @@ function onFinishVotingClick() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: parseInt(userId) })
     })
-    .then(res => {
-        if (!res.ok) {
-            return res.json().then(data => {
-                throw new Error(data.error || 'Failed to finish voting');
-            });
-        }
-        return res.json();
-    })
-    .then(data => {
-        message.textContent = 'Voting has been finished!';
-        finishVotingButton.style.display = 'none';
-        voteButton.style.display = 'none';
-        if (data.winner) {
-            results.textContent = `${data.winner}`;
-        }
-    })
-    .catch(err => {
-        console.error('Error finishing voting:', err);
-        message.textContent = `Error: ${err.message}`;
-    });
+        .then(res => {
+            if (!res.ok) {
+                return res.json().then(data => {
+                    throw new Error(data.error || 'Failed to finish voting');
+                });
+            }
+            return res.json();
+        })
+        .then(data => {
+            message.textContent = 'Voting has been finished!';
+            finishVotingButton.style.display = 'none';
+            voteButton.style.display = 'none';
+            if (data.winner) {
+                results.textContent = `${data.winner}`;
+            }
+        })
+        .catch(err => {
+            console.error('Error finishing voting:', err);
+            message.textContent = `Error: ${err.message}`;
+        });
 }
 
 // Helper function to show restaurants added-to-vote notification
@@ -918,4 +981,15 @@ window.addEventListener("DOMContentLoaded", () => {
     if (finishVotingButton) {
         finishVotingButton.addEventListener('click', onFinishVotingClick);
     }
+
+    function handleResponsiveSetup() {
+        resizeMapLayout();
+
+        if (window.innerWidth <= 768) {
+            setupMobileMapListToggle();
+        }
+    }
+
+    handleResponsiveSetup();
+    window.addEventListener('resize', handleResponsiveSetup);
 });
