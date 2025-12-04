@@ -22,6 +22,35 @@
             flex-direction: column;
         }
 
+        .ui.button {
+            background-color: #D62828 !important;
+            color: #fff !important;
+            border-radius: 6px !important;
+        }
+
+        .ui.button:hover,
+        .ui.button:focus {
+            background-color: #b71f1f !important;
+            color: #fff !important;
+        }
+
+        .ui.secondary.pointing.menu .active.item {
+            color: #D62828 !important;
+            border-color: #D62828 !important;
+        }
+
+        .user-counter .ui.label {
+            background-color: #21ba45 !important; /* Semantic green */
+        }
+
+        #topMenu .logo-item img {
+            height: 40px !important;
+            width: auto !important;
+            object-fit: contain;
+            display: flex !important;
+            align-items: center !important;
+        }
+
         .page-content {
             flex: 1 1 auto;
             display: flex;
@@ -207,9 +236,12 @@
 </div>
 
 <div id="sessionContent" data-zip="<%= session.zip_code %>">
-    <div class="ui secondary pointing menu" style="padding: 1px">
-        <a class="item active" data-tab="group">Your Group</a>
-        <a class="item" data-tab="select">Choose Restaurants</a>
+    <div class="ui secondary pointing menu" id="topMenu" style="padding: 1px; align-items: center;">
+        <div class="item logo-item" style="padding-right: 20px;">
+            <img src="/logoIcon.png" alt="Where2Eat Logo" class="ui small image">
+        </div>
+        <a class="item active" data-tab="group">Members</a>
+        <a class="item" data-tab="select">Locations</a>
         <a class="item" data-tab="vote">Vote</a>
         <a class="item" data-tab="results">Results</a>
     </div>
@@ -272,7 +304,7 @@
             <div class="center aligned content">
                 <div class="ui fluid action input">
                     <input readonly type="text" value="placeholder">
-                    <button class="ui teal right labeled icon button" id="copyLink">
+                    <button class="ui right labeled icon button" id="copyLink">
                         <i class="copy icon"></i>
                         Copy
                     </button>
@@ -298,8 +330,8 @@
         <div class="map-and-details">
 
             <div class="mobile-map-list-toggle-overlay ui buttons">
-                <button class="ui blue button active" id="mobile-show-map">Map</button>
-                <button class="ui blue button" id="mobile-show-list">List</button>
+                <button class="ui button active" id="mobile-show-map">Map</button>
+                <button class="ui button" id="mobile-show-list">List</button>
             </div>
 
             <div class="map-column">
@@ -321,7 +353,7 @@
     <div class="ui bottom attached tab segment" data-tab="vote">
         <div class="ui form" id="vote"></div>
         <button class="ui button" id="vote-button">Vote!</button>
-        <button class="ui red button" id="finish-voting-button" style="display: none;">Finish Voting Early</button>
+        <button class="ui button" id="finish-voting-button" style="display: none;">Finish Voting Early</button>
         <div id="message"></div>
     </div>
 
