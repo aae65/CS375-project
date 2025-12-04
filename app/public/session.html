@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Session</title>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
     <link href="/semantic/dist/semantic.min.css" rel="stylesheet">
@@ -14,20 +15,86 @@
             height: 100%;
             margin: 0;
             padding: 0;
+            overflow: hidden !important;
         }
 
-        #add-button-container {
-            margin-top: 8px;
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ui.button {
+            background-color: #D62828 !important;
+            color: #fff !important;
+            border-radius: 6px !important;
+        }
+
+        .ui.button:hover,
+        .ui.button:focus {
+            background-color: #b71f1f !important;
+            color: #fff !important;
+        }
+
+        .ui.secondary.pointing.menu .active.item {
+            color: #D62828 !important;
+            border-color: #D62828 !important;
+        }
+
+        .user-counter .ui.label {
+            background-color: #21ba45 !important; /* Semantic green */
+        }
+
+        #topMenu .logo-item img {
+            height: 40px !important;
+            width: auto !important;
+            object-fit: contain;
+            display: flex !important;
+            align-items: center !important;
+        }
+
+        .page-content {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #sessionContent {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Container that holds map + place details */
+        .map-and-details {
+            display: flex;
+            flex-direction: row;
+            gap: 16px;
+            width: 100%;
+            min-height: 300px;
+        }
+
+        .map-column,
+        .details-column {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            min-height: 0;
+        }
+
+        /* ~60% map, ~40% details */
+        .map-column {
+            flex: 3;
+        }
+
+        .details-column {
+            flex: 2;
         }
 
         .map-container {
+            flex: 1 1 0;
             width: 100%;
-            height: 60vh;
-            min-height: 240px;
-            max-height: 600px;
             border: 1px solid #ddd;
             border-radius: 8px;
-            margin-top: 8px;
             overflow: hidden;
         }
 
@@ -36,173 +103,266 @@
             height: 100%;
         }
 
-        gmpx-place-overview {
-            height: 300px;
+        #add-button-container {
             margin-top: 8px;
+        }
+
+        /* Scrollable area for place data */
+        .place-details-scroll {
+            flex: 1 1 0;
+            height: 100%;
+            min-height: 0;
+            margin-top: 8px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        gmpx-place-overview {
+            width: 100%;
+            display: block;
+            margin: 0;
             --gmpx-color-surface: #fff;
+        }
+
+        /* Map/List mode classes */
+        .map-and-details.mobile-view-map .map-column {
+            display: flex;
+        }
+
+        .map-and-details.mobile-view-map .details-column {
+            display: none;
+        }
+
+        .map-and-details.mobile-view-list .map-column {
+            display: none;
+        }
+
+        .map-and-details.mobile-view-list .details-column {
+            display: flex;
+        }
+
+        /* Floating mobile toggle buttons overlay (bottom-right) */
+        .mobile-map-list-toggle-overlay {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            z-index: 50;
+            display: none !important;
+            backdrop-filter: blur(6px);
+            background: rgba(255,255,255,0.7);
+            border-radius: 8px;
+            padding: 4px;
+        }
+
+        .mobile-map-list-toggle-overlay .button {
+            border-radius: 6px !important;
+        }
+
+        /* Responsive: stack on mobile and toggle between map and list */
+        @media (max-width: 768px) {
+            .user-counter {
+                display: none !important;
+            }
+
+            .mobile-map-list-toggle-overlay {
+                display: inline-flex !important;
+            }
+
+            .map-and-details {
+                position: relative;
+                flex-direction: column;
+            }
+
+            .map-column,
+            .details-column {
+                flex: 1 1 auto;
+            }
+
+            .map-container,
+            .place-details-scroll {
+                flex: 1 1 auto;
+                min-height: 0;
+            }
         }
     </style>
 
     <base href="/">
 </head>
 <body>
-    <gmpx-api-loader key="YOUR_API_KEY" libraries="places,marker"></gmpx-api-loader>
+<gmpx-api-loader key="YOUR_API_KEY" libraries="places,marker"></gmpx-api-loader>
 
-    <!-- User counter -->
-    <div style="position: fixed; top: 10px; right: 10px; z-index: 1000;">
-        <div class="ui green label">
-            <i class="users icon"></i>
-            <span id="user-count">1</span> user(s) online
-        </div>
+<!-- User counter -->
+<div class="user-counter" style="position: fixed; top: 10px; right: 10px; z-index: 1000;">
+    <div class="ui green label">
+        <i class="users icon"></i>
+        <span id="user-count">1</span> user(s) online
     </div>
+</div>
 
-    <div class="ui modal" id="joinModal">
-        <div class="header">Join Restaurant Voting Session</div>
-        <div class="content">
-            <div class="ui two item menu" id="joinTabs">
-                <a class="item active" data-tab="existing">I'm already in this session</a>
-                <a class="item" data-tab="new">I'm new to this session</a>
-            </div>
-
-            <div class="ui bottom attached tab segment active" data-tab="existing">
-                <div class="ui form" id="existingUserForm">
-                    <div class="field">
-                        <label>Select your name:</label>
-                        <select class="ui dropdown" id="existingUserSelect">
-                            <option value="">Choose your name...</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <div class="ui bottom attached tab segment" data-tab="new">
-                <div class="ui form" id="newUserForm">
-                    <div class="field">
-                        <label>Your Name</label>
-                        <input placeholder="Enter your name" name="newName" type="text">
-                    </div>
-                </div>
-            </div>
-
-            <div class="ui error message" id="joinErrorBox" style="display: none;"></div>
-        </div>
-        <div class="actions">
-            <button class="ui primary button" id="joinButton">Join Session</button>
-        </div>
-    </div>
-
-    <div id="sessionContent">
-        <div class="ui secondary pointing menu" style="padding: 1px">
-            <a class="item active" data-tab="group">Your Group</a>
-            <a class="item" data-tab="select">Choose Restaurants</a>
-            <a class="item" data-tab="vote">Vote</a>
-            <a class="item" data-tab="results">Results</a>
+<div class="ui modal" id="joinModal">
+    <div class="header">Join Restaurant Voting Session</div>
+    <div class="content">
+        <div class="ui two item menu" id="joinTabs">
+            <a class="item active" data-tab="existing">I'm already in this session</a>
+            <a class="item" data-tab="new">I'm new to this session</a>
         </div>
 
-        <div class="ui bottom attached tab segment active" data-tab="group">
-            <h1>Hello <span id="name"></span></h1>
-            <div class="ui stackable one column grid">
-                <div class="column">
-                    <div class="ui raised segment">
-                        <div class="ui placeholder">
-                            <div class="image header">
-                                <div class="line"></div>
-                                <div class="line"></div>
-                            </div>
-                            <div class="paragraph">
-                                <div class="medium line"></div>
-                                <div class="short line"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="column">
-                    <div class="ui raised segment">
-                        <div class="ui placeholder">
-                            <div class="image header">
-                                <div class="line"></div>
-                                <div class="line"></div>
-                            </div>
-                            <div class="paragraph">
-                                <div class="medium line"></div>
-                                <div class="short line"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="column">
-                    <div class="ui raised segment">
-                        <div class="ui placeholder">
-                            <div class="image header">
-                                <div class="line"></div>
-                                <div class="line"></div>
-                            </div>
-                            <div class="paragraph">
-                                <div class="medium line"></div>
-                                <div class="short line"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <br>
-            <button class="ui labeled icon button" id="generate">
-                <i class="linkify icon"></i>
-                Want to add more people? Share this link with them!
-            </button>
-            <div class="ui modal" id="modal">
-                <div class="center aligned header">
-                    Note: anyone with this link can join the session
-                </div>
-                <div class="center aligned content">
-                    <div class="ui fluid action input">
-                        <input readonly type="text" value="placeholder">
-                        <button class="ui teal right labeled icon button" id="copyLink">
-                            <i class="copy icon"></i>
-                            Copy
-                        </button>
-                        <div class="ui custom popup transition hidden" id="link-copied">
-                            Link copied!
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="ui bottom attached tab segment" data-tab="select">
-            <button class="ui teal button" id="locBtn">Use My Location</button>
-
-            <div class="ui form" style="margin-top:8px">
+        <div class="ui bottom attached tab segment active" data-tab="existing">
+            <div class="ui form" id="existingUserForm">
                 <div class="field">
-                    <gmpx-place-autocomplete
-                            country="us"
-                            id="autocomplete"
-                            placeholder="Find restaurants, cafés, etc.">
-                    </gmpx-place-autocomplete>
+                    <label>Select your name:</label>
+                    <select class="ui dropdown" id="existingUserSelect">
+                        <option value="">Choose your name...</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="ui bottom attached tab segment" data-tab="new">
+            <div class="ui form" id="newUserForm">
+                <div class="field">
+                    <label>Your Name</label>
+                    <input placeholder="Enter your name" name="newName" type="text">
+                </div>
+            </div>
+        </div>
+
+        <div class="ui error message" id="joinErrorBox" style="display: none;"></div>
+    </div>
+    <div class="actions">
+        <button class="ui primary button" id="joinButton">Join Session</button>
+    </div>
+</div>
+
+<div id="sessionContent" data-zip="<%= session.zip_code %>">
+    <div class="ui secondary pointing menu" id="topMenu" style="padding: 1px; align-items: center;">
+        <div class="item logo-item" style="padding-right: 20px;">
+            <img src="/logoIcon.png" alt="Where2Eat Logo" class="ui small image">
+        </div>
+        <a class="item active" data-tab="group">Members</a>
+        <a class="item" data-tab="select">Locations</a>
+        <a class="item" data-tab="vote">Vote</a>
+        <a class="item" data-tab="results">Results</a>
+    </div>
+
+    <div class="ui bottom attached tab segment active" data-tab="group">
+        <h1>Hello <span id="name"></span></h1>
+        <div class="ui stackable one column grid">
+            <div class="column">
+                <div class="ui raised segment">
+                    <div class="ui placeholder">
+                        <div class="image header">
+                            <div class="line"></div>
+                            <div class="line"></div>
+                        </div>
+                        <div class="paragraph">
+                            <div class="medium line"></div>
+                            <div class="short line"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="column">
+                <div class="ui raised segment">
+                    <div class="ui placeholder">
+                        <div class="image header">
+                            <div class="line"></div>
+                            <div class="line"></div>
+                        </div>
+                        <div class="paragraph">
+                            <div class="medium line"></div>
+                            <div class="short line"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="column">
+                <div class="ui raised segment">
+                    <div class="ui placeholder">
+                        <div class="image header">
+                            <div class="line"></div>
+                            <div class="line"></div>
+                        </div>
+                        <div class="paragraph">
+                            <div class="medium line"></div>
+                            <div class="short line"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <br>
+        <button class="ui labeled icon button" id="generate">
+            <i class="linkify icon"></i>
+            Want to add more people? Share this link with them!
+        </button>
+        <div class="ui modal" id="modal">
+            <div class="center aligned header">
+                Note: anyone with this link can join the session
+            </div>
+            <div class="center aligned content">
+                <div class="ui fluid action input">
+                    <input readonly type="text" value="placeholder">
+                    <button class="ui right labeled icon button" id="copyLink">
+                        <i class="copy icon"></i>
+                        Copy
+                    </button>
+                    <div class="ui custom popup transition hidden" id="link-copied">
+                        Link copied!
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ui bottom attached tab segment" data-tab="select">
+        <div class="ui form" style="margin-top:8px">
+            <div class="field">
+                <gmpx-place-autocomplete
+                        country="us"
+                        id="autocomplete"
+                        placeholder="Find restaurants, cafés, etc.">
+                </gmpx-place-autocomplete>
+            </div>
+        </div>
+
+        <div class="map-and-details">
+
+            <div class="mobile-map-list-toggle-overlay ui buttons">
+                <button class="ui button active" id="mobile-show-map">Map</button>
+                <button class="ui button" id="mobile-show-list">List</button>
+            </div>
+
+            <div class="map-column">
+                <div class="map-container">
+                    <div id="map"></div>
                 </div>
             </div>
 
-            <div class="map-container">
-                <div id="map"></div>
+            <div class="details-column">
+                <div id="add-button-container"></div>
+
+                <div class="place-details-scroll">
+                    <gmpx-place-overview id="overview"></gmpx-place-overview>
+                </div>
             </div>
-
-            <div id="add-button-container"></div>
-
-            <gmpx-place-overview id="overview"></gmpx-place-overview>
-        </div>
-
-        <div class="ui bottom attached tab segment" data-tab="vote">
-            <div class="ui form" id="vote"></div>
-            <button class="ui button" id="vote-button">Vote!</button>
-            <button class="ui red button" id="finish-voting-button" style="display: none;">Finish Voting Early</button>
-            <div id="message"></div>
-        </div>
-
-        <div class="ui bottom attached tab segment" data-tab="results">
-            <h1>The winner is:</h1>
-            <div id="results">Nothing yet, make sure everyone has voted!</div>
         </div>
     </div>
+
+    <div class="ui bottom attached tab segment" data-tab="vote">
+        <div class="ui form" id="vote"></div>
+        <button class="ui button" id="vote-button">Vote!</button>
+        <button class="ui button" id="finish-voting-button" style="display: none;">Finish Voting Early</button>
+        <div id="message"></div>
+    </div>
+
+    <div class="ui bottom attached tab segment" data-tab="results">
+        <h1>The winner is:</h1>
+        <div id="results">Nothing yet, make sure everyone has voted!</div>
+    </div>
+</div>
 </body>
 <script src="session.js"></script>
 </html>

@@ -62,7 +62,9 @@ app.post("/generate-session", (req, res) => {
         /^\d{5}$/.test(req.body.zip.trim());
 
     let end_date = null;
+
     let validEndDate = false;
+
     if (typeof req.body.end_date === "string" && req.body.end_date.trim().length > 0) {
         end_date = new Date(req.body.end_date.trim());
         let today = new Date();
@@ -277,21 +279,31 @@ app.get("/api/session/:session_id/users", (req, res) => {
 app.get("/session/:session_id", (req, res) => {
     let session_id = req.params.session_id;
 
-    pool.query(`SELECT * FROM session WHERE session_id = $1`, [session_id])
-    .then((result) => {
-        if (result.rows.length === 0) {
-            return res.status(404).send("Session not found.");
-        } else {
-            let htmlPath = path.join(__dirname, "public", "session.html");
-            let html = fs.readFileSync(htmlPath, "utf8");
-            html = html.replace(/YOUR_API_KEY/g, process.env.GOOGLE_MAPS_API_KEY || "");
-            return res.type("html").send(html);
-        }
-    })
-    .catch((error) => {
-        console.error("Error fetching session:", error);
-        return res.status(500).send("Error fetching session.");
-    });
+    // Get the session and its settings so we can read zipcode
+    pool.query(`
+        SELECT s.session_id, ss.zipcode
+        FROM session s
+                 LEFT JOIN session_settings ss ON s.session_id = ss.session_id
+        WHERE s.session_id = $1
+    `, [session_id])
+        .then((result) => {
+            if (result.rows.length === 0) {
+                return res.status(404).send("Session not found.");
+            } else {
+                let zip = result.rows[0].zipcode || "";
+                let htmlPath = path.join(__dirname, "public", "session.html");
+                let html = fs.readFileSync(htmlPath, "utf8");
+
+                html = html.replace(/YOUR_API_KEY/g, process.env.GOOGLE_MAPS_API_KEY || "");
+                html = html.replace(/<%= session.zip_code %>/g, zip);
+
+                return res.type("html").send(html);
+            }
+        })
+        .catch((error) => {
+            console.error("Error fetching session:", error);
+            return res.status(500).send("Error fetching session.");
+        });
 });
 
 // Socket.IO connection handling
