@@ -4,17 +4,77 @@
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
     <link href="/semantic/dist/semantic.min.css" rel="stylesheet">
     <script src="/semantic/dist/semantic.min.js"></script>
-    <title>WIP</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" sizes="32x32" href="/logoIcon.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/logoIcon.png">
+    <title>Where2Eat</title>
+    <style>
+        body {
+            background: #FDFBD4 !important;
+        }
+
+        .red-btn {
+            background-color: #D62828 !important;
+            color: #fff !important;
+        }
+
+        .red-btn:hover {
+            background-color: #b71f1f !important;
+        }
+
+        #createSessionModal .content {
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            padding: 2rem !important;
+        }
+
+        #createSessionModal form {
+            margin: 0 auto !important;
+            width: 100%;
+            max-width: 600px;
+            text-align: left !important;
+        }
+
+        #createSessionModal .ui.form .field > label {
+            text-align: left !important;
+        }
+
+        #createSessionModal .ui.stackable.grid {
+            width: 100% !important;
+        }
+
+        #createSessionModal .ui.stackable.grid .column {
+            width: 100% !important;
+            max-width: 600px;
+            margin: 0 auto !important;
+        }
+
+        #createSessionModal .ui.form .field input {
+            width: 100% !important;
+        }
+    </style>
 </head>
 <body>
-    <div class="ui secondary pointing menu" style="padding: 1px">
-        <a class="item active" data-tab="About Us">About Us</a>
-        <a class="item" data-tab="create">Create a Session</a>
+
+<div class="ui middle aligned center aligned grid" style="height: 100vh;">
+    <div class="column" style="max-width: 450px;">
+
+        <img src="/logoTitle.png" alt="Where2Eat Logo" class="ui centered medium image" style="margin-bottom: 2rem;">
+
+        <!-- Get Started button -->
+        <button class="ui huge button red-btn" id="get-started">
+            Get Started
+        </button>
     </div>
-    <div class="ui fluid bottom attached tab segment active" data-tab="About Us">
-        hi
+</div>
+
+<!-- Create Session Modal -->
+<div class="ui modal" id="createSessionModal">
+    <div class="header">
+        Create a Session
     </div>
-    <div class="ui fluid bottom attached tab segment" data-tab="create">
+    <div class="content">
         <div class="ui two column stackable grid">
             <div class="column">
                 <form class="ui form" id="form" action="/generate-session">
@@ -23,8 +83,16 @@
                         <input placeholder="Session Title" name="session_title" type="text">
                     </div>
                     <div class="field">
+                        <label>Zip Code</label>
+                        <input placeholder="Zip Code" name="zip" type="text">
+                    </div>
+                    <div class="field">
                         <label>Event Date</label>
                         <input placeholder="Event Date" name="event_date" type="date">
+                    </div>
+                    <div class="field">
+                        <label>End Date (Last day to vote)</label>
+                        <input placeholder="End Date" name="end_date" type="date">
                     </div>
                     <div class="field">
                         <label>Name</label>
@@ -34,20 +102,13 @@
                         <label>Email</label>
                         <input placeholder="Email" name="email" type="text">
                     </div>
-                    <div class="field">
-                        <label>Zip Code</label>
-                        <input placeholder="Zip Code" name="zip" type="text">
-                    </div>
-                    <div class="field">
-                        <label>End Date (Last day to vote)</label>
-                        <input placeholder="End Date" name="end_date" type="date">
-                    </div>
-                    <button class="ui primary button" id="submit">Submit</button>
-                    <div class="ui error message" id="errorBox"></div>
+                    <button class="ui button red-btn" id="submit">Submit</button>
+                    <div class="ui error message" id="errorBox" style="display:none;"></div>
                 </form>
             </div>
         </div>
     </div>
+</div>
 </body>
 <script src="index.js"></script>
 </html>
