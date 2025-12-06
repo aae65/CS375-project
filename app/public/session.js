@@ -296,9 +296,8 @@ function renderMemberList(sessionId) {
             const card = document.createElement('div');
             card.className = 'ui card';
             card.style.width = 'auto';
-            card.style.minWidth = '160px';
-            card.style.maxWidth = '220px';
-            card.style.margin = '0.5em 0.5em 0.5em 0';
+            card.style.minWidth = '180px';
+            card.style.margin = '0.5em 0.5em 0.5em 0.5em';
 
             const content = document.createElement('div');
             content.className = 'content';
@@ -313,6 +312,9 @@ function renderMemberList(sessionId) {
             nameSpan.style.fontWeight = '500';
             nameSpan.style.fontSize = '1em';
             nameSpan.style.flex = '1';
+            nameSpan.style.overflow = 'hidden';
+            nameSpan.style.textOverflow = 'ellipsis';
+            nameSpan.style.whiteSpace = 'nowrap';
 
             // Status
             const label = document.createElement('span');
@@ -321,7 +323,8 @@ function renderMemberList(sessionId) {
                 : 'ui grey mini label';
             label.style.margin = '0';
             label.style.fontSize = '0.95em';
-            label.style.marginLeft = 'auto';
+            label.style.marginLeft = '1em';
+            label.style.flexShrink = '0';
 
             const icon = document.createElement('i');
             icon.className = member.has_voted
