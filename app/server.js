@@ -12,11 +12,12 @@ let io = new Server(server, {
             : "*",
         methods: ["GET", "POST"]
     },
-    transports: ['websocket', 'polling'],
-    allowUpgrades: true,
+    transports: ['websocket'],
+    allowUpgrades: false,
     pingTimeout: 60000,
     pingInterval: 25000
 });
+
 let fs = require("fs");
 let cookieParser = require("cookie-parser");
 app.use(express.json());
@@ -598,4 +599,14 @@ app.post("/session/:session_id/finish-voting", async (req, res) => {
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
+});
+
+// debugging
+
+io.engine.on("connection_error", (err) => {
+    console.log("Engine.IO connection_error"), {
+        code: err.code,
+        message: err.message,
+        context: err.context
+    }
 });

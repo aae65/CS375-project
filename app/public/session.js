@@ -110,7 +110,10 @@ function setupMobileMapListToggle() {
 }
 
 // Socket.IO should automatically use the current page's protocol and hostname
-const socket = io();
+const socket = io({
+    transports: ['websocket'],
+    upgrade: false
+});
 
 // Get session ID from URL
 function getSessionId() {
@@ -374,7 +377,7 @@ document.getElementById('joinButton').addEventListener('click', function (e) {
                     return response.json().then(data => {
                         if (data.userId) {
                             userId = data.userId;
-                            sessionStorage.setItem('userId', String(userId));
+                            sessionStorage.setItem('user_Id', String(userId));
                         }
                         showSessionContent(data.name);
                     });
@@ -413,7 +416,7 @@ document.getElementById('joinButton').addEventListener('click', function (e) {
                     return response.json().then(data => {
                         if (data.userId) {
                             userId = data.userId;
-                            sessionStorage.setItem('userId', String(userId));
+                            sessionStorage.setItem('user_Id', String(userId));
                         }
                         showSessionContent(data.name);
                     });
@@ -1111,7 +1114,7 @@ window.addEventListener("DOMContentLoaded", () => {
         .then(data => {
             if (data && data.userId) {
                 userId = data.userId;
-                sessionStorage.setItem('userId', String(userId));
+                sessionStorage.setItem('user_Id', String(userId));
                 console.log('Retrieved userId from server:', userId);
 
                 // If we have a userId but no name in sessionStorage, store it
@@ -1146,4 +1149,9 @@ window.addEventListener("DOMContentLoaded", () => {
 
     handleResponsiveSetup();
     window.addEventListener('resize', handleResponsiveSetup);
+});
+
+//debugging
+socket.on("connect_error", (err) => {
+  console.error("connect_error:", err.message, err);
 });
