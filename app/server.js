@@ -524,6 +524,8 @@ app.post("/vote", async (req, res) => {
             }
         }
 
+        io.to(`session-${session_id}`).emit('member-list-updated');
+
         res.json({
             success: true,
             allVoted: total === voted,

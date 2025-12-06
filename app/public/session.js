@@ -164,6 +164,10 @@ socket.on('vote-submitted', (data) => {
     }
 });
 
+socket.on('member-list-updated', () => {
+    renderMemberList(sessionId);
+});
+
 // Listen for voting completion and display winner
 socket.on('voting-complete', (data) => {
     console.log('Voting complete:', data);
@@ -964,8 +968,6 @@ function onVoteClick() {
                     results.textContent = `${data.winner}`;
                 }
                 
-                // for group tab
-                renderMemberList(sessionId);
             })
             .catch(err => {
                 console.error('Voting error:', err);
