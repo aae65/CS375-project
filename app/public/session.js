@@ -164,6 +164,10 @@ socket.on('vote-submitted', (data) => {
     }
 });
 
+socket.on('member-list-updated', () => {
+    renderMemberList(sessionId);
+});
+
 // Listen for voting completion and display winner
 socket.on('voting-complete', (data) => {
     console.log('Voting complete:', data);
@@ -249,6 +253,7 @@ function showSessionContent(name) {
     sessionContent.style.display = 'block';
     $(joinModal).modal('hide');
 
+    renderMemberList(sessionId);
     initializeShareFunctionality();
 
     $('.menu .item').tab({
@@ -265,6 +270,76 @@ function showSessionContent(name) {
                 }, 100);
             }
         }
+    });
+}
+
+function renderMemberList(sessionId) {
+    const container = document.getElementById('member-list-cards');
+    container.innerHTML = ''; 
+
+    fetch(`/api/session/${sessionId}/members`)
+    .then(res => {
+        if (!res.ok) {
+            throw new Error(`Failed to fetch members: ${res.status} ${res.statusText}`);
+        }
+        return res.json();
+    })
+    .then(data => {
+        if (!data.members || !Array.isArray(data.members)) {
+            throw new Error('Invalid member data received');
+        }
+        if (data.members.length === 0) {
+            container.innerHTML = '<div class="ui message">No members found in this session.</div>';
+            return;
+        }
+        data.members.forEach(member => {
+            const card = document.createElement('div');
+            card.className = 'ui card';
+            card.style.width = 'auto';
+            card.style.minWidth = '160px';
+            card.style.maxWidth = '220px';
+            card.style.margin = '0.5em 0.5em 0.5em 0';
+
+            const content = document.createElement('div');
+            content.className = 'content';
+            content.style.display = 'flex';
+            content.style.alignItems = 'center';
+            content.style.justifyContent = 'space-between';
+            content.style.padding = '0.8em 0.8em';
+
+            // Name
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = member.name;
+            nameSpan.style.fontWeight = '500';
+            nameSpan.style.fontSize = '1em';
+            nameSpan.style.flex = '1';
+
+            // Status
+            const label = document.createElement('span');
+            label.className = member.has_voted
+                ? 'ui green mini label'
+                : 'ui grey mini label';
+            label.style.margin = '0';
+            label.style.fontSize = '0.95em';
+            label.style.marginLeft = 'auto';
+
+            const icon = document.createElement('i');
+            icon.className = member.has_voted
+                ? 'check circle icon'
+                : 'circle outline icon';
+
+            label.appendChild(icon);
+            label.appendChild(document.createTextNode(member.has_voted ? ' Voted' : ' Not Voted'));
+
+            content.appendChild(nameSpan);
+            content.appendChild(label);
+            card.appendChild(content);
+            container.appendChild(card);
+        });
+    })
+    .catch(error => {
+        container.innerHTML = `<div class="ui negative message">Error loading members: ${error.message}</div>`;
+        console.error('renderMemberList error:', error);
     });
 }
 
@@ -908,6 +983,7 @@ function onVoteClick() {
                 if (data.allVoted && data.winner) {
                     results.textContent = `${data.winner}`;
                 }
+                
             })
             .catch(err => {
                 console.error('Voting error:', err);

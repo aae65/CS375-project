@@ -276,6 +276,27 @@ app.get("/api/session/:session_id/users", (req, res) => {
     });
 });
 
+app.get("/api/session/:session_id/members", (req, res) => {
+    const session_id = req.params.session_id;
+    pool.query(`
+        SELECT u.user_id, u.name,
+            EXISTS (
+                SELECT 1 FROM votes v
+                WHERE v.session_id = su.session_id AND v.user_id = su.user_id
+            ) AS has_voted
+        FROM users u
+        JOIN session_users su ON u.user_id = su.user_id
+        WHERE su.session_id = $1
+        ORDER BY u.name
+    `, [session_id])
+    .then(result => {
+        res.json({ members: result.rows });
+    })
+    .catch(err => {
+        res.status(500).json({ error: "Error fetching members" });
+    });
+});
+
 app.get("/session/:session_id", (req, res) => {
     let session_id = req.params.session_id;
 
@@ -502,6 +523,8 @@ app.post("/vote", async (req, res) => {
                 });
             }
         }
+
+        io.to(`session-${session_id}`).emit('member-list-updated');
 
         res.json({
             success: true,
