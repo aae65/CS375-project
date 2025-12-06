@@ -190,6 +190,9 @@ app.post("/session/:session_id/join", (req, res) => {
             .then(() => {
                 res.cookie(`session_${session_id}`, user_id, cookieOptions);
 
+                // Notify all users in session to update member list
+                io.to(`session-${session_id}`).emit('member-list-updated');
+
                 res.status(200).json({ name: name.trim(), userId: user_id });
             });
         })
@@ -356,6 +359,9 @@ io.on('connection', (socket) => {
             }
         })
         .catch((err) => console.error('Error fetching restaurants:', err));
+        
+        // Notify all users to update member list
+        io.to(`session-${sessionId}`).emit('member-list-updated');
         
         console.log(`User ${socket.id} joined session ${sessionId}. Total users: ${userCount}`);
     });
