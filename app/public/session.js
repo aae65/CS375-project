@@ -16,6 +16,7 @@ let joinModal = document.getElementById('joinModal');
 let sessionContent = document.getElementById('sessionContent');
 let sessionZipCache = null;
 let mobileToggleInitialized = false;
+let memberListUpdateTimeout = null;
 
 async function fetchSessionZipIfNeeded() {
     if (sessionZipCache) return sessionZipCache;
@@ -168,7 +169,13 @@ socket.on('vote-submitted', (data) => {
 });
 
 socket.on('member-list-updated', () => {
-    renderMemberList(sessionId);
+    // Debounce member list updates to prevent duplicate renders
+    if (memberListUpdateTimeout) {
+        clearTimeout(memberListUpdateTimeout);
+    }
+    memberListUpdateTimeout = setTimeout(() => {
+        renderMemberList(sessionId);
+    }, 100);
 });
 
 // Listen for voting completion and display winner
@@ -278,6 +285,9 @@ function showSessionContent(name) {
 
 function renderMemberList(sessionId) {
     const container = document.getElementById('member-list-cards');
+    if (!container) return;
+    
+    // Clear existing content immediately to prevent duplicates
     container.innerHTML = ''; 
 
     fetch(`/api/session/${sessionId}/members`)
@@ -990,6 +1000,8 @@ function onVoteClick() {
                     results.textContent = `${data.winner}`;
                 }
                 
+                // Update member list to show voted status
+                renderMemberList(sessionId);
             })
             .catch(err => {
                 console.error('Voting error:', err);
