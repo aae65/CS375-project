@@ -274,17 +274,30 @@ function showSessionContent(name) {
 }
 
 function renderMemberList(sessionId) {
-    fetch(`/api/session/${sessionId}/members`)
-    .then(res => res.json())
-    .then(data => {
-        const container = document.getElementById('member-list-cards');
-        container.innerHTML = '';
+    const container = document.getElementById('member-list-cards');
+    container.innerHTML = ''; 
 
+    fetch(`/api/session/${sessionId}/members`)
+    .then(res => {
+        if (!res.ok) {
+            throw new Error(`Failed to fetch members: ${res.status} ${res.statusText}`);
+        }
+        return res.json();
+    })
+    .then(data => {
+        if (!data.members || !Array.isArray(data.members)) {
+            throw new Error('Invalid member data received');
+        }
+        if (data.members.length === 0) {
+            container.innerHTML = '<div class="ui message">No members found in this session.</div>';
+            return;
+        }
         data.members.forEach(member => {
             const card = document.createElement('div');
             card.className = 'ui card';
             card.style.width = 'auto';
-            card.style.minWidth = '220px';
+            card.style.minWidth = '160px';
+            card.style.maxWidth = '220px';
             card.style.margin = '0.5em 0.5em 0.5em 0';
 
             const content = document.createElement('div');
@@ -301,15 +314,14 @@ function renderMemberList(sessionId) {
             nameSpan.style.fontSize = '1em';
             nameSpan.style.flex = '1';
 
-            // Status 
+            // Status
             const label = document.createElement('span');
             label.className = member.has_voted
                 ? 'ui green mini label'
                 : 'ui grey mini label';
             label.style.margin = '0';
-            label.style.paddingRight = '0.4em';
             label.style.fontSize = '0.95em';
-            label.style.justifySelf = 'flex-end';
+            label.style.marginLeft = 'auto';
 
             const icon = document.createElement('i');
             icon.className = member.has_voted
@@ -324,6 +336,10 @@ function renderMemberList(sessionId) {
             card.appendChild(content);
             container.appendChild(card);
         });
+    })
+    .catch(error => {
+        container.innerHTML = `<div class="ui negative message">Error loading members: ${error.message}</div>`;
+        console.error('renderMemberList error:', error);
     });
 }
 
