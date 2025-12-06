@@ -249,6 +249,7 @@ function showSessionContent(name) {
     sessionContent.style.display = 'block';
     $(joinModal).modal('hide');
 
+    renderMemberList(sessionId);
     initializeShareFunctionality();
 
     $('.menu .item').tab({
@@ -265,6 +266,60 @@ function showSessionContent(name) {
                 }, 100);
             }
         }
+    });
+}
+
+function renderMemberList(sessionId) {
+    fetch(`/api/session/${sessionId}/members`)
+    .then(res => res.json())
+    .then(data => {
+        const container = document.getElementById('member-list-cards');
+        container.innerHTML = '';
+
+        data.members.forEach(member => {
+            const card = document.createElement('div');
+            card.className = 'ui card';
+            card.style.width = 'auto';
+            card.style.minWidth = '220px';
+            card.style.margin = '0.5em 0.5em 0.5em 0';
+
+            const content = document.createElement('div');
+            content.className = 'content';
+            content.style.display = 'flex';
+            content.style.alignItems = 'center';
+            content.style.justifyContent = 'space-between';
+            content.style.padding = '0.8em 0.8em';
+
+            // Name
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = member.name;
+            nameSpan.style.fontWeight = '500';
+            nameSpan.style.fontSize = '1em';
+            nameSpan.style.flex = '1';
+
+            // Status 
+            const label = document.createElement('span');
+            label.className = member.has_voted
+                ? 'ui green mini label'
+                : 'ui grey mini label';
+            label.style.margin = '0';
+            label.style.paddingRight = '0.4em';
+            label.style.fontSize = '0.95em';
+            label.style.justifySelf = 'flex-end';
+
+            const icon = document.createElement('i');
+            icon.className = member.has_voted
+                ? 'check circle icon'
+                : 'circle outline icon';
+
+            label.appendChild(icon);
+            label.appendChild(document.createTextNode(member.has_voted ? ' Voted' : ' Not Voted'));
+
+            content.appendChild(nameSpan);
+            content.appendChild(label);
+            card.appendChild(content);
+            container.appendChild(card);
+        });
     });
 }
 
@@ -908,6 +963,9 @@ function onVoteClick() {
                 if (data.allVoted && data.winner) {
                     results.textContent = `${data.winner}`;
                 }
+                
+                // for group tab
+                renderMemberList(sessionId);
             })
             .catch(err => {
                 console.error('Voting error:', err);
