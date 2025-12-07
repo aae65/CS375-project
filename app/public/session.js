@@ -290,7 +290,7 @@ function renderMemberList(sessionId) {
     // Clear existing content immediately to prevent duplicates
     container.innerHTML = ''; 
 
-    fetch(`/api/session/${sessionId}/members`)
+    fetch(`/api/session/${sessionId}/members`, { cache: "no-store" })
     .then(res => {
         if (!res.ok) {
             throw new Error(`Failed to fetch members: ${res.status} ${res.statusText}`);
