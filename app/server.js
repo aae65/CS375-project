@@ -297,7 +297,7 @@ app.get("/api/session/:session_id/members", (req, res) => {
         res.json({ members: result.rows });
     })
     .catch(err => {
-        res.status(500).json({ error: "Error fetching members" });
+        res.status(500).json({ error: "Error fetching members. Please refresh and try again." });
     });
 });
 
