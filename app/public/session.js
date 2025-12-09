@@ -17,6 +17,7 @@ let sessionContent = document.getElementById('sessionContent');
 let sessionZipCache = null;
 let mobileToggleInitialized = false;
 let memberListUpdateTimeout = null;
+let sessionDataRefreshInterval = null;
 
 async function fetchSessionZipIfNeeded() {
     if (sessionZipCache) return sessionZipCache;
@@ -156,10 +157,14 @@ socket.on('connect', () => {
     if (sessionId) {
         socket.emit('join-session', sessionId);
     }
+    // Start periodic refresh when connected (every 3 seconds)
+    startPeriodicRefresh();
 });
 
 socket.on('disconnect', () => {
     console.log('Disconnected from server');
+    // Stop periodic refresh when disconnected
+    stopPeriodicRefresh();
 });
 
 socket.on('reconnect', (attemptNumber) => {
@@ -167,9 +172,91 @@ socket.on('reconnect', (attemptNumber) => {
     // Refresh voting list after reconnection
     if (sessionId) {
         socket.emit('join-session', sessionId);
-        renderMemberList(sessionId);
+        refreshAllSessionData();
     }
 });
+
+// Periodic refresh functions - refresh all session data every 3 seconds
+function startPeriodicRefresh() {
+    stopPeriodicRefresh(); // Clear any existing intervals
+    
+    // Refresh all session data every 3 seconds
+    sessionDataRefreshInterval = setInterval(() => {
+        if (sessionId && socket.connected) {
+            refreshAllSessionData();
+        }
+    }, 3000);
+}
+
+function stopPeriodicRefresh() {
+    if (sessionDataRefreshInterval) {
+        clearInterval(sessionDataRefreshInterval);
+        sessionDataRefreshInterval = null;
+    }
+}
+
+function refreshAllSessionData() {
+    if (!sessionId) return;
+    
+    // Refresh member list (shows who voted)
+    if (document.getElementById('member-list-cards')) {
+        renderMemberList(sessionId);
+    }
+    
+    // Refresh restaurant list
+    fetch(`/api/session/${sessionId}/restaurants?_=${new Date().getTime()}`, {
+        cache: "no-store",
+        headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        }
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.restaurants) {
+                syncRestaurantList(data.restaurants);
+            }
+        })
+        .catch(err => console.log('Restaurant refresh error:', err));
+    
+    // Check for results/winner
+    fetch(`/api/session/${sessionId}/results?_=${new Date().getTime()}`, {
+        cache: "no-store",
+        headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        }
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.winner) {
+                const resultsElement = document.getElementById("results");
+                const finishBtn = document.getElementById("finish-voting-button");
+                const voteBtn = document.getElementById("vote-button");
+                
+                if (resultsElement && resultsElement.textContent !== data.winner) {
+                    resultsElement.textContent = data.winner;
+                }
+                if (finishBtn) {
+                    finishBtn.style.display = 'none';
+                }
+                if (voteBtn) {
+                    voteBtn.style.display = 'none';
+                }
+            }
+        })
+        .catch(err => console.log('Results refresh error:', err));
+}
+
+function syncRestaurantList(restaurants) {
+    restaurants.forEach(restaurant => {
+        if (!restaurantIds.has(restaurant.id)) {
+            addRestaurantToVotingList(restaurant);
+        }
+    });
+}
 
 // Listen for restaurant additions from other users
 socket.on('restaurant-added', (restaurant) => {

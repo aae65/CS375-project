@@ -321,6 +321,59 @@ app.get("/api/session/:session_id/restaurants", (req, res) => {
     });
 });
 
+app.get("/api/session/:session_id/results", (req, res) => {
+    const session_id = req.params.session_id;
+    
+    pool.query(`
+        SELECT COUNT(*) AS total
+        FROM session_users
+        WHERE session_id = $1
+    `, [session_id])
+    .then(totalResult => {
+        const total = parseInt(totalResult.rows[0].total);
+        
+        return pool.query(`
+            SELECT COUNT(DISTINCT user_id) AS voted
+            FROM votes
+            WHERE session_id = $1
+        `, [session_id])
+        .then(votedResult => {
+            const voted = parseInt(votedResult.rows[0].voted);
+            
+            // Check if everyone voted or if voting was finished early
+            if (total === voted && voted > 0) {
+                return pool.query(`
+                    SELECT r.name, COUNT(*) as vote_count
+                    FROM votes v
+                    JOIN restaurants r ON v.restaurant_id = r.restaurant_id
+                    WHERE v.session_id = $1
+                    GROUP BY r.name
+                    ORDER BY vote_count DESC
+                    LIMIT 1
+                `, [session_id])
+                .then(winnerResult => {
+                    if (winnerResult.rows.length > 0) {
+                        res.json({ 
+                            winner: winnerResult.rows[0].name,
+                            allVoted: true,
+                            votedCount: voted,
+                            totalCount: total
+                        });
+                    } else {
+                        res.json({ winner: null, allVoted: false, votedCount: voted, totalCount: total });
+                    }
+                });
+            } else {
+                res.json({ winner: null, allVoted: false, votedCount: voted, totalCount: total });
+            }
+        });
+    })
+    .catch(err => {
+        console.error('Error fetching results:', err);
+        res.status(500).json({ error: "Error fetching results" });
+    });
+});
+
 app.get("/session/:session_id", (req, res) => {
     let session_id = req.params.session_id;
 
