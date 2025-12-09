@@ -15,7 +15,10 @@ let io = new Server(server, {
     transports: ['websocket'],
     allowUpgrades: false,
     pingTimeout: 60000,
-    pingInterval: 25000
+    pingInterval: 25000,
+    connectTimeout: 45000,
+    maxHttpBufferSize: 1e6,
+    perMessageDeflate: false
 });
 
 let fs = require("fs");
@@ -298,6 +301,23 @@ app.get("/api/session/:session_id/members", (req, res) => {
     })
     .catch(err => {
         res.status(500).json({ error: "Error fetching members. Please refresh and try again." });
+    });
+});
+
+app.get("/api/session/:session_id/restaurants", (req, res) => {
+    const session_id = req.params.session_id;
+    pool.query(`
+        SELECT restaurant_id as id, name, address
+        FROM restaurants
+        WHERE session_id = $1
+        ORDER BY restaurant_id
+    `, [session_id])
+    .then(result => {
+        res.json({ restaurants: result.rows });
+    })
+    .catch(err => {
+        console.error('Error fetching restaurants:', err);
+        res.status(500).json({ error: "Error fetching restaurants" });
     });
 });
 

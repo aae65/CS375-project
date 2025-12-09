@@ -113,7 +113,12 @@ function setupMobileMapListToggle() {
 // Socket.IO should automatically use the current page's protocol and hostname
 const socket = io({
     transports: ['websocket'],
-    upgrade: false
+    upgrade: false,
+    reconnection: true,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    reconnectionAttempts: 10,
+    timeout: 20000
 });
 
 // Get session ID from URL
@@ -147,10 +152,23 @@ socket.on('user-count', (count) => {
 // Log connection events
 socket.on('connect', () => {
     console.log('Connected to server');
+    // Re-join session room on reconnection
+    if (sessionId) {
+        socket.emit('join-session', sessionId);
+    }
 });
 
 socket.on('disconnect', () => {
     console.log('Disconnected from server');
+});
+
+socket.on('reconnect', (attemptNumber) => {
+    console.log('Reconnected to server after', attemptNumber, 'attempts');
+    // Refresh voting list after reconnection
+    if (sessionId) {
+        socket.emit('join-session', sessionId);
+        renderMemberList(sessionId);
+    }
 });
 
 // Listen for restaurant additions from other users
@@ -173,20 +191,29 @@ socket.on('member-list-updated', () => {
     if (memberListUpdateTimeout) {
         clearTimeout(memberListUpdateTimeout);
     }
+    // Increased delay to ensure DB transaction is committed
     memberListUpdateTimeout = setTimeout(() => {
         renderMemberList(sessionId);
-    }, 100);
+    }, 200);
 });
 
 // Listen for voting completion and display winner
 socket.on('voting-complete', (data) => {
     console.log('Voting complete:', data);
     if (data.winner) {
-        results.textContent = `${data.winner}`;
-        if (finishVotingButton) {
-            finishVotingButton.style.display = 'none';
+        const resultsElement = document.getElementById("results");
+        const finishBtn = document.getElementById("finish-voting-button");
+        const voteBtn = document.getElementById("vote-button");
+        
+        if (resultsElement) {
+            resultsElement.textContent = `${data.winner}`;
         }
-        voteButton.style.display = 'none';
+        if (finishBtn) {
+            finishBtn.style.display = 'none';
+        }
+        if (voteBtn) {
+            voteBtn.style.display = 'none';
+        }
     }
 });
 
@@ -290,7 +317,16 @@ function renderMemberList(sessionId) {
     // Clear existing content immediately to prevent duplicates
     container.innerHTML = ''; 
 
-    fetch(`/api/session/${sessionId}/members`, { cache: "no-store" })
+    // Add timestamp to prevent caching
+    const timestamp = new Date().getTime();
+    fetch(`/api/session/${sessionId}/members?_=${timestamp}`, { 
+        cache: "no-store",
+        headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        }
+    })
     .then(res => {
         if (!res.ok) {
             throw new Error(`Failed to fetch members: ${res.status} ${res.statusText}`);
@@ -866,11 +902,21 @@ $('.menu .item').tab({
 });
 
 // Initial voting UI state
-voteButton.style.display = "none";
-message.textContent = "No restaurants added. Add some to vote!";
+window.addEventListener('DOMContentLoaded', () => {
+    const voteBtn = document.getElementById("vote-button");
+    const msgElement = document.getElementById("message");
+    
+    if (voteBtn) voteBtn.style.display = "none";
+    if (msgElement) msgElement.textContent = "No restaurants added. Add some to vote!";
+});
 
 // Event listeners for add/vote
-voteButton.addEventListener('click', onVoteClick);
+window.addEventListener('DOMContentLoaded', () => {
+    const voteBtn = document.getElementById("vote-button");
+    if (voteBtn) {
+        voteBtn.addEventListener('click', onVoteClick);
+    }
+});
 
 // Helper function to add place to session
 function addPlaceToSession(place) {
@@ -903,10 +949,20 @@ function addRestaurantToVotingList(restaurant) {
     }
     restaurantIds.add(id);
 
+    // Get elements fresh each time
+    const voteContainer = document.getElementById("vote");
+    const voteBtn = document.getElementById("vote-button");
+    const msgElement = document.getElementById("message");
+    
+    if (!voteContainer) {
+        console.warn('Vote container not found');
+        return;
+    }
+
     // Update message and show vote button if this is the first restaurant
     if (restaurantIds.size === 1) {
-        message.textContent = "";
-        voteButton.style.display = "block";
+        if (msgElement) msgElement.textContent = "";
+        if (voteBtn) voteBtn.style.display = "block";
     }
 
     const details = [];
@@ -928,7 +984,7 @@ function addRestaurantToVotingList(restaurant) {
         ? `<div style="font-size: 0.85em; color: #555; margin-top: 2px;">${details.join(" • ")}</div>`
         : "";
 
-    vote.insertAdjacentHTML(
+    voteContainer.insertAdjacentHTML(
         "beforeend",
         `
         <div class="field">
@@ -945,6 +1001,16 @@ function addRestaurantToVotingList(restaurant) {
 }
 
 function onVoteClick() {
+    const voteBtn = document.getElementById("vote-button");
+    const msgElement = document.getElementById("message");
+    const voteContainer = document.getElementById("vote");
+    const resultsElement = document.getElementById("results");
+    
+    if (!voteBtn || !msgElement || !voteContainer) {
+        console.error('Required elements not found');
+        return;
+    }
+    
     let choices = document.getElementsByName("choice");
     let restaurantId;
     let restaurantName;
@@ -956,12 +1022,12 @@ function onVoteClick() {
         }
     }
     if (!restaurantId) {
-        message.textContent = "Please select a choice";
+        msgElement.textContent = "Please select a choice";
     } else {
-        message.textContent = `You have voted for ${restaurantName}`;
-        voteButton.className = "ui disabled button";
-        for (let i = 0; i < vote.children.length; i++) {
-            vote.children[i].className = "disabled field";
+        msgElement.textContent = `You have voted for ${restaurantName}`;
+        voteBtn.className = "ui disabled button";
+        for (let i = 0; i < voteContainer.children.length; i++) {
+            voteContainer.children[i].className = "disabled field";
         }
 
         socket.emit('submit-vote', {
@@ -971,7 +1037,7 @@ function onVoteClick() {
 
         if (!userId) {
             console.error('userId not found in sessionStorage');
-            message.textContent = 'Error: User ID not found. Please refresh the page.';
+            msgElement.textContent = 'Error: User ID not found. Please refresh the page.';
             return;
         }
 
@@ -993,11 +1059,13 @@ function onVoteClick() {
                 return res.json();
             })
             .then(data => {
-                voteButton.classList.add("disabled");
-                message.textContent = `You voted for ${restaurantName}`;
+                voteBtn.classList.add("disabled");
+                msgElement.textContent = `You voted for ${restaurantName}`;
 
                 if (data.allVoted && data.winner) {
-                    results.textContent = `${data.winner}`;
+                    if (resultsElement) {
+                        resultsElement.textContent = `${data.winner}`;
+                    }
                 }
                 
                 // Update member list to show voted status
@@ -1006,10 +1074,10 @@ function onVoteClick() {
             .catch(err => {
                 console.error('Voting error:', err);
                 if (err.message.includes('Voting period has ended')) {
-                    message.textContent = 'Voting period has ended. You can no longer vote.';
-                    voteButton.style.display = 'none';
+                    msgElement.textContent = 'Voting period has ended. You can no longer vote.';
+                    voteBtn.style.display = 'none';
                 } else {
-                    message.textContent = `Error: ${err.message}`;
+                    msgElement.textContent = `Error: ${err.message}`;
                 }
             });
     }
