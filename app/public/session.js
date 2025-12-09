@@ -401,9 +401,6 @@ function renderMemberList(sessionId) {
     const container = document.getElementById('member-list-cards');
     if (!container) return;
     
-    // Clear existing content immediately to prevent duplicates
-    container.innerHTML = ''; 
-
     // Add timestamp to prevent caching
     const timestamp = new Date().getTime();
     fetch(`/api/session/${sessionId}/members?_=${timestamp}`, { 
@@ -428,58 +425,104 @@ function renderMemberList(sessionId) {
             container.innerHTML = '<div class="ui message">No members found in this session.</div>';
             return;
         }
-        data.members.forEach(member => {
-            const card = document.createElement('div');
-            card.className = 'ui card';
-            card.style.width = 'auto';
-            card.style.minWidth = '180px';
-            card.style.margin = '0.5em 0.5em 0.5em 0.5em';
-
-            const content = document.createElement('div');
-            content.className = 'content';
-            content.style.display = 'flex';
-            content.style.alignItems = 'center';
-            content.style.justifyContent = 'space-between';
-            content.style.padding = '0.8em 0.8em';
-
-            // Name
-            const nameSpan = document.createElement('span');
-            nameSpan.textContent = member.name;
-            nameSpan.style.fontWeight = '500';
-            nameSpan.style.fontSize = '1em';
-            nameSpan.style.flex = '1';
-            nameSpan.style.overflow = 'hidden';
-            nameSpan.style.textOverflow = 'ellipsis';
-            nameSpan.style.whiteSpace = 'nowrap';
-
-            // Status
-            const label = document.createElement('span');
-            label.className = member.has_voted
-                ? 'ui green mini label'
-                : 'ui grey mini label';
-            label.style.margin = '0';
-            label.style.fontSize = '0.95em';
-            label.style.marginLeft = '1em';
-            label.style.flexShrink = '0';
-
-            const icon = document.createElement('i');
-            icon.className = member.has_voted
-                ? 'check circle icon'
-                : 'circle outline icon';
-
-            label.appendChild(icon);
-            label.appendChild(document.createTextNode(member.has_voted ? ' Voted' : ' Not Voted'));
-
-            content.appendChild(nameSpan);
-            content.appendChild(label);
-            card.appendChild(content);
-            container.appendChild(card);
+        
+        // Update existing cards instead of clearing and rebuilding
+        const existingCards = container.querySelectorAll('.ui.card');
+        const memberMap = new Map();
+        
+        // Map existing cards by user_id
+        existingCards.forEach(card => {
+            const userId = card.getAttribute('data-user-id');
+            if (userId) {
+                memberMap.set(userId, card);
+            }
         });
+        
+        // Process each member from the server
+        data.members.forEach((member, index) => {
+            const userId = String(member.user_id);
+            const existingCard = memberMap.get(userId);
+            
+            if (existingCard) {
+                // Update existing card's voted status
+                const label = existingCard.querySelector('.label');
+                const icon = existingCard.querySelector('i');
+                
+                if (label && icon) {
+                    label.className = member.has_voted ? 'ui green mini label' : 'ui grey mini label';
+                    icon.className = member.has_voted ? 'check circle icon' : 'circle outline icon';
+                    
+                    // Update text
+                    const textNode = Array.from(label.childNodes).find(n => n.nodeType === Node.TEXT_NODE);
+                    if (textNode) {
+                        textNode.textContent = member.has_voted ? ' Voted' : ' Not Voted';
+                    }
+                }
+                memberMap.delete(userId); // Mark as processed
+            } else {
+                // Create new card for new member
+                const card = createMemberCard(member);
+                container.appendChild(card);
+            }
+        });
+        
+        // Remove cards for members no longer in session
+        memberMap.forEach(card => card.remove());
     })
     .catch(error => {
         container.innerHTML = `<div class="ui negative message">Error loading members: ${error.message}</div>`;
         console.error('renderMemberList error:', error);
     });
+}
+
+function createMemberCard(member) {
+    const card = document.createElement('div');
+    card.className = 'ui card';
+    card.setAttribute('data-user-id', member.user_id);
+    card.style.width = 'auto';
+    card.style.minWidth = '180px';
+    card.style.margin = '0.5em 0.5em 0.5em 0.5em';
+
+    const content = document.createElement('div');
+    content.className = 'content';
+    content.style.display = 'flex';
+    content.style.alignItems = 'center';
+    content.style.justifyContent = 'space-between';
+    content.style.padding = '0.8em 0.8em';
+
+    // Name
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = member.name;
+    nameSpan.style.fontWeight = '500';
+    nameSpan.style.fontSize = '1em';
+    nameSpan.style.flex = '1';
+    nameSpan.style.overflow = 'hidden';
+    nameSpan.style.textOverflow = 'ellipsis';
+    nameSpan.style.whiteSpace = 'nowrap';
+
+    // Status
+    const label = document.createElement('span');
+    label.className = member.has_voted
+        ? 'ui green mini label'
+        : 'ui grey mini label';
+    label.style.margin = '0';
+    label.style.fontSize = '0.95em';
+    label.style.marginLeft = '1em';
+    label.style.flexShrink = '0';
+
+    const icon = document.createElement('i');
+    icon.className = member.has_voted
+        ? 'check circle icon'
+        : 'circle outline icon';
+
+    label.appendChild(icon);
+    label.appendChild(document.createTextNode(member.has_voted ? ' Voted' : ' Not Voted'));
+
+    content.appendChild(nameSpan);
+    content.appendChild(label);
+    card.appendChild(content);
+    
+    return card;
 }
 
 document.getElementById('joinButton').addEventListener('click', function (e) {
