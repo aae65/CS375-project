@@ -412,11 +412,14 @@ io.on('connection', (socket) => {
                     restaurant_id = result.rows[0].restaurant_id;
                 }
 
-                // Broadcast to all users in the session (including sender)
+                // Broadcast to all users in the session (including sender) with all restaurant data
                 io.to(`session-${socket.sessionId}`).emit('restaurant-added', {
                     id: restaurant_id,
                     name: data.name,
-                    address: data.address || ''
+                    address: data.address || '',
+                    rating: data.rating || null,
+                    userRatingCount: data.userRatingCount || null,
+                    priceLevel: data.priceLevel || null
                 });
             } catch (err) {
                 console.error('Error adding restaurant:', err);
